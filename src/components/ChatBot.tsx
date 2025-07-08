@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, ArrowLeft, AlertCircle } from "lucide-react"
+import { Send, Bot, User, Loader2, ArrowLeft, AlertCircle, X } from "lucide-react"
 
 interface Message {
   id: string
@@ -15,7 +15,12 @@ interface Message {
   error?: boolean
 }
 
-export default function ChatBot() {
+interface ChatBotProps {
+  isModal?: boolean
+  onClose?: () => void
+}
+
+export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -220,7 +225,11 @@ INFORMACIÓN INSTITUCIONAL:
   }
 
   const handleGoBack = () => {
-    window.location.href = "/"
+    if (isModal && onClose) {
+      onClose()
+    } else {
+      window.location.href = "/"
+    }
   }
 
   const testConnection = async () => {
@@ -244,9 +253,15 @@ INFORMACIÓN INSTITUCIONAL:
     }
   }
 
+  // Para modal: sin fondo, solo el Card tendrá fondo blanco
+  // Para versión normal: fondo degradado como siempre
+  const containerClass = isModal
+    ? "h-full flex items-center justify-center p-4"
+    : "min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl border-amber-200">
+    <div className={containerClass}>
+      <Card className="w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl border-amber-200 bg-white">
         <CardHeader className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-b backdrop-blur-sm rounded-t-lg">
           <CardTitle className="flex items-center justify-between text-xl">
             <div className="flex items-center gap-2">
@@ -254,11 +269,7 @@ INFORMACIÓN INSTITUCIONAL:
               Chatbot UJAP - Postgrado
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Powered by Gemini</span>
-                {apiStatus === "error" && (
-                  <span title="Error de conexión">
-                    <AlertCircle className="h-4 w-4 text-red-200" />
-                  </span>
-                )}
+                {apiStatus === "error" && <AlertCircle className="h-4 w-4 text-red-200" />}
                 {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" title="Conectado" />}
               </div>
             </div>
@@ -276,8 +287,8 @@ INFORMACIÓN INSTITUCIONAL:
                 </Button>
               )}
               <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={handleGoBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
+                {isModal ? <X className="h-4 w-4 mr-2" /> : <ArrowLeft className="h-4 w-4 mr-2" />}
+                {isModal ? "Cerrar" : "Volver"}
               </Button>
             </div>
           </CardTitle>
