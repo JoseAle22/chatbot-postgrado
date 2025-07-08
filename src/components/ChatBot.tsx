@@ -114,12 +114,12 @@ export default function ChatBot() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <Card className="w-full max-w-4xl h-[80vh] flex flex-col shadow-xl">
-        <CardHeader className="border-b bg-white/50 backdrop-blur-sm">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Bot className="h-6 w-6 text-blue-600" />
-            Chatbot Inteligente
+    <div className="ujap-gradient flex items-center justify-center min-h-screen p-4">
+      <Card className="ujap-card w-full max-w-4xl h-[80vh] flex flex-col">
+        <CardHeader className="ujap-header border-b backdrop-blur-sm">
+          <CardTitle className="flex items-center gap-2 text-xl text-white">
+            <Bot className="h-6 w-6 text-white" />
+            Chatbot UJAP - Postgrado
           </CardTitle>
         </CardHeader>
 
@@ -136,8 +136,11 @@ export default function ChatBot() {
 
               {messages.map((message) => (
                 <div
-                  key={message.id}
-                  className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    message.role === "user" 
+                      ? "user-message-ujap ml-auto" 
+                      : "bot-message-ujap"
+                  }`}
                 >
                   {message.role === "assistant" && (
                     <Avatar className="h-8 w-8 mt-1">
@@ -190,10 +193,14 @@ export default function ChatBot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu mensaje aquí..."
-              className="flex-1"
+              className="flex-1 ujap-input"
               disabled={isLoading}
             />
-            <Button type="submit" disabled={isLoading || !input.trim()} className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              type="submit" 
+              disabled={isLoading || !input.trim()} 
+              className="ujap-button-primary"
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
