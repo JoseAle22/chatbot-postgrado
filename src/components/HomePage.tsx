@@ -2,13 +2,10 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Mail, Phone, PhoneCall, Facebook, Twitter, Instagram, MessageCircle } from "lucide-react"
+import { Mail, Phone, PhoneCall, Facebook, Twitter, Instagram } from "lucide-react"
+import FloatingChatButton from "./FloatingChatButton"
 
-interface HomePageProps {
-  onNavigateToChatbot: () => void
-}
-
-export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Top Header */}
@@ -49,7 +46,7 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img src="/placeholder.svg?height=60&width=200" alt="UJAP Logo" className="h-12 w-auto" />
+              <img src="/images/logo/ujap_eslogan1.png" alt="UJAP Logo" className="h-12 w-auto" />
             </div>
 
             <nav className="hidden md:flex items-center space-x-8">
@@ -117,15 +114,6 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
                 Dirección
               </a>
             </nav>
-
-            {/* Chatbot Button */}
-            <Button
-              onClick={onNavigateToChatbot}
-              className="bg-amber-600 hover:bg-amber-700 text-white flex items-center space-x-2"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>Chatbot</span>
-            </Button>
           </div>
         </div>
       </header>
@@ -217,43 +205,43 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
           <h2 className="text-3xl font-bold text-amber-600 mb-8">Programas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
-              { title: "Doctorado en Ciencias de la Educación", image: "/placeholder.svg?height=200&width=300" },
-              { title: "Doctorado en Orientación", image: "/placeholder.svg?height=200&width=300" },
+              { title: "Doctorado en Ciencias de la Educación", image: "/images/cienciaseducacion.webp" },
+              { title: "Doctorado en Orientación", image: "/images/cienciasorientiacion.webp" },
               {
                 title: "Maestría Gerencia y Tecnología de la Información",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/cienciastegnologia.webp",
               },
               {
                 title: "Maestría Gerencia de la Comunicación Organizacional",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/cienciasgerencia.webp",
               },
               {
                 title: "Maestría Educación para el Desarrollo Sustentable",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/cienciaseducacion.webp",
               },
               {
                 title: "Especialización Docencia en Educación Superior",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/docencia.webp",
               },
               {
                 title: "Especialización en Administración de Empresas",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/especialicacionempresas.webp",
               },
-              { title: "Especialización en Automatización Industrial", image: "/placeholder.svg?height=200&width=300" },
-              { title: "Especialización en Derecho Administrativo", image: "/placeholder.svg?height=200&width=300" },
-              { title: "Especialización en Derecho Procesal Civil", image: "/placeholder.svg?height=200&width=300" },
+              { title: "Especialización en Automatización Industrial", image: "/images/especializacionmaquinas.webp" },
+              { title: "Especialización en Derecho Administrativo", image: "/images/especializacionempresasgeneral.webp" },
+              { title: "Especialización en Derecho Procesal Civil", image: "/images/derechoprocesal.webp" },
               {
                 title: "Especialización en Gerencia de Control de Calidad e Inspección de Obras",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/controldecalidad.webp",
               },
               {
                 title: "Especialización en Gestión Aduanera y Tributaria",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/aduaneratributaria.webp",
               },
-              { title: "Especialización en Telecomunicaciones", image: "/placeholder.svg?height=200&width=300" },
+              { title: "Especialización en Telecomunicaciones", image: "/images/telecom.webp" },
               {
                 title: "Especialización en Gestión y Control de las Finanzas Públicas",
-                image: "/placeholder.svg?height=200&width=300",
+                image: "/images/finanzas.webp",
               },
             ].map((program, index) => (
               <Card
@@ -289,7 +277,7 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
                   <CardContent className="p-6 text-center">
                     <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-amber-200 border-4 border-amber-300 overflow-hidden">
                       <img
-                        src="/placeholder.svg?height=96&width=96"
+                        src="/images/rectora-scaled.webp"
                         alt="Dra. Haydee Páez"
                         className="w-full h-full object-cover"
                       />
@@ -381,7 +369,7 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
           <div className="grid grid-cols-1 md:grid-cols-6 gap-8">
             <div className="md:col-span-1 text-center">
               <div className="w-12 h-12 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
-                <img src="/placeholder.svg?height=32&width=32" alt="UJAP" />
+                <img src="/images/logo/FooterLogo_Mesa-de-trabajo-1.png" alt="UJAP" />
               </div>
               <p className="text-sm">
                 Universidad
@@ -448,6 +436,9 @@ export default function HomePage({ onNavigateToChatbot }: HomePageProps) {
           </div>
         </div>
       </footer>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>
   )
 }
