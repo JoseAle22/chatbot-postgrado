@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, ArrowLeft, AlertCircle, X } from "lucide-react"
+import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft } from "lucide-react"
 
 interface Message {
   id: string
@@ -253,14 +253,153 @@ INFORMACIÓN INSTITUCIONAL:
     }
   }
 
-  // Para modal: sin fondo, solo el Card tendrá fondo blanco
-  // Para versión normal: fondo degradado como siempre
-  const containerClass = isModal
-    ? "h-full flex items-center justify-center p-4"
-    : "min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
+  // Si es modal, usar estructura diferente para móvil vs desktop
+  if (isModal) {
+    return (
+      <div className="h-full w-full flex flex-col bg-white md:rounded-lg overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-3 md:p-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Bot className="h-5 w-5 md:h-6 md:w-6 text-white flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm md:text-lg font-semibold">Chatbot UJAP</div>
+                <div className="text-xs opacity-90 hidden sm:block">Postgrado</div>
+              </div>
 
+              {/* Status indicators */}
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Powered by Gemini</span>
+                {apiStatus === "error" && <AlertCircle className="h-4 w-4 text-red-200" />}
+                {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" />}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+              {apiStatus !== "working" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20 text-xs px-2 py-1 h-auto hidden sm:flex"
+                  onClick={testConnection}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  <span className="hidden md:inline">Probar</span>
+                  <span className="md:hidden">Test</span>
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 px-2 py-1 h-auto"
+                onClick={handleGoBack}
+              >
+                <X className="h-4 w-4" />
+                <span className="ml-1 hidden sm:inline">Cerrar</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-hidden">
+          <div
+            ref={scrollAreaRef}
+            className="h-full overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#fbbf24 #fef3c7",
+            }}
+          >
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-2 md:gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {message.role === "assistant" && (
+                  <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
+                    <AvatarFallback
+                      className={`${message.error ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}
+                    >
+                      {message.error ? (
+                        <AlertCircle className="h-3 w-3 md:h-4 md:w-4" />
+                      ) : (
+                        <Bot className="h-3 w-3 md:h-4 md:w-4" />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+
+                <div
+                  className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 md:px-4 md:py-2 ${
+                    message.role === "user"
+                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                      : message.error
+                        ? "bg-red-50 text-red-900 border border-red-200"
+                        : "bg-gray-50 text-gray-900 border border-gray-200 shadow-sm"
+                  }`}
+                >
+                  <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words">
+                    {message.content}
+                  </p>
+                </div>
+
+                {message.role === "user" && (
+                  <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
+                    <AvatarFallback className="bg-gray-100 text-gray-600">
+                      <User className="h-3 w-3 md:h-4 md:w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="flex gap-2 md:gap-3 justify-start">
+                <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
+                  <AvatarFallback className="bg-amber-100 text-amber-600">
+                    <Bot className="h-3 w-3 md:h-4 md:w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-2 shadow-sm">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    <span className="text-sm">Escribiendo...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Input area */}
+        <div className="border-t bg-white p-3 md:p-4 flex-shrink-0">
+          <form onSubmit={handleSubmit} className="flex w-full gap-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Pregúntame sobre programas UJAP..."
+              className="flex-1 border-gray-300 focus:border-amber-400 text-sm h-10 md:h-11"
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 h-10 md:h-11 px-4"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // Versión no modal (página completa)
   return (
-    <div className={containerClass}>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl border-amber-200 bg-white">
         <CardHeader className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-b backdrop-blur-sm rounded-t-lg">
           <CardTitle className="flex items-center justify-between text-xl">
@@ -270,7 +409,7 @@ INFORMACIÓN INSTITUCIONAL:
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Powered by Gemini</span>
                 {apiStatus === "error" && <AlertCircle className="h-4 w-4 text-red-200" />}
-                {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" title="Conectado" />}
+                {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" />}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -287,8 +426,8 @@ INFORMACIÓN INSTITUCIONAL:
                 </Button>
               )}
               <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={handleGoBack}>
-                {isModal ? <X className="h-4 w-4 mr-2" /> : <ArrowLeft className="h-4 w-4 mr-2" />}
-                {isModal ? "Cerrar" : "Volver"}
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver
               </Button>
             </div>
           </CardTitle>
@@ -297,7 +436,7 @@ INFORMACIÓN INSTITUCIONAL:
         <CardContent className="flex-1 p-0 overflow-hidden">
           <div
             ref={scrollAreaRef}
-            className="h-full overflow-y-auto overflow-x-hidden p-4 space-y-4 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100 hover:scrollbar-thumb-amber-400"
+            className="h-full overflow-y-auto p-4 space-y-4"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#fbbf24 #fef3c7",
@@ -363,11 +502,7 @@ INFORMACIÓN INSTITUCIONAL:
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                apiStatus === "error"
-                  ? "Configura la API key primero..."
-                  : "Pregúntame sobre programas, admisiones, contactos..."
-              }
+              placeholder="Pregúntame sobre programas, admisiones, contactos..."
               className="flex-1 border-amber-200 focus:border-amber-400"
               disabled={isLoading}
             />

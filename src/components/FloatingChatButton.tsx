@@ -1,49 +1,59 @@
 "use client"
 
 import { useState } from "react"
+import { MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { MessageCircle, X } from "lucide-react"
-import MiniChat from "./MiniChat"
 import ChatModal from "./ChatModal"
+import MiniChat from "./MiniChat"
 
 export default function FloatingChatButton() {
-  const [isMiniChatOpen, setIsMiniChatOpen] = useState(false)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [showMiniChat, setShowMiniChat] = useState(false)
 
-  const handleToggleMiniChat = () => {
-    setIsMiniChatOpen(!isMiniChatOpen)
+  const handleButtonClick = () => {
+    // En móvil, abrir directamente el modal
+    // En desktop, mostrar mini chat primero
+    if (window.innerWidth < 768) {
+      setShowModal(true)
+    } else {
+      setShowMiniChat(true)
+    }
   }
 
-  const handleExpandToModal = () => {
-    setIsMiniChatOpen(false)
-    setIsModalOpen(true)
+  const handleExpandMiniChat = () => {
+    setShowMiniChat(false)
+    setShowModal(true)
+  }
+
+  const handleCloseMiniChat = () => {
+    setShowMiniChat(false)
   }
 
   const handleCloseModal = () => {
-    setIsModalOpen(false)
+    setShowModal(false)
   }
 
   return (
     <>
-      {/* Botón flotante */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Button */}
+      {!showMiniChat && (
         <Button
-          onClick={handleToggleMiniChat}
-          className="h-14 w-14 rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+          onClick={handleButtonClick}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 z-40"
         >
-          {isMiniChatOpen ? <X className="h-6 w-6 text-white" /> : <MessageCircle className="h-6 w-6 text-white" />}
+          <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
         </Button>
-      </div>
+      )}
 
-      {/* Mini chat */}
-      {isMiniChatOpen && (
-        <div className="fixed bottom-24 right-6 z-40">
-          <MiniChat onExpand={handleExpandToModal} onClose={() => setIsMiniChatOpen(false)} />
+      {/* Mini Chat - Solo en desktop */}
+      {showMiniChat && (
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 hidden md:block">
+          <MiniChat onExpand={handleExpandMiniChat} onClose={handleCloseMiniChat} />
         </div>
       )}
 
-      {/* Modal del chat completo */}
-      {isModalOpen && <ChatModal onClose={handleCloseModal} />}
+      {/* Chat Modal */}
+      {showModal && <ChatModal onClose={handleCloseModal} />}
     </>
   )
 }

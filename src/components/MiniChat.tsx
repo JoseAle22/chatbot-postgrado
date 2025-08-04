@@ -177,19 +177,29 @@ INFORMACIÓN INSTITUCIONAL:
   }
 
   return (
-    <Card className="w-80 h-96 flex flex-col shadow-2xl border-amber-200 animate-in slide-in-from-bottom-4 duration-300 bg-white">
-      <CardHeader className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-3 rounded-t-lg">
-        <CardTitle className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
+    <Card className="w-72 sm:w-80 h-80 sm:h-96 flex flex-col shadow-2xl border-amber-200 animate-in slide-in-from-bottom-4 duration-300 bg-white">
+      <CardHeader className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-2 sm:p-3 rounded-t-lg">
+        <CardTitle className="flex items-center justify-between text-xs sm:text-sm">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Asistente UJAP</span>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white hover:bg-white/20" onClick={onExpand}>
-              <Maximize2 className="h-3 w-3" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white hover:bg-white/20"
+              onClick={onExpand}
+            >
+              <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white hover:bg-white/20" onClick={onClose}>
-              <X className="h-3 w-3" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white hover:bg-white/20"
+              onClick={onClose}
+            >
+              <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
             </Button>
           </div>
         </CardTitle>
@@ -198,20 +208,23 @@ INFORMACIÓN INSTITUCIONAL:
       <CardContent className="flex-1 p-0 overflow-hidden">
         <div
           ref={scrollAreaRef}
-          className="h-full overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100"
+          className="h-full overflow-y-auto p-2 sm:p-3 space-y-2 sm:space-y-3 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100"
         >
           {messages.map((message) => (
-            <div key={message.id} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={message.id}
+              className={`flex gap-1 sm:gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
               {message.role === "assistant" && (
-                <Avatar className="h-6 w-6 mt-1 flex-shrink-0">
+                <Avatar className="h-5 w-5 sm:h-6 sm:w-6 mt-1 flex-shrink-0">
                   <AvatarFallback className="bg-amber-100 text-amber-600 text-xs">
-                    <Bot className="h-3 w-3" />
+                    <Bot className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                   </AvatarFallback>
                 </Avatar>
               )}
 
               <div
-                className={`max-w-[75%] rounded-lg px-3 py-2 text-xs ${
+                className={`max-w-[80%] sm:max-w-[75%] rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs ${
                   message.role === "user"
                     ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
                     : message.error
@@ -223,9 +236,9 @@ INFORMACIÓN INSTITUCIONAL:
               </div>
 
               {message.role === "user" && (
-                <Avatar className="h-6 w-6 mt-1 flex-shrink-0">
+                <Avatar className="h-5 w-5 sm:h-6 sm:w-6 mt-1 flex-shrink-0">
                   <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
-                    <User className="h-3 w-3" />
+                    <User className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                   </AvatarFallback>
                 </Avatar>
               )}
@@ -233,15 +246,15 @@ INFORMACIÓN INSTITUCIONAL:
           ))}
 
           {isLoading && (
-            <div className="flex gap-2 justify-start">
-              <Avatar className="h-6 w-6 mt-1 flex-shrink-0">
+            <div className="flex gap-1 sm:gap-2 justify-start">
+              <Avatar className="h-5 w-5 sm:h-6 sm:w-6 mt-1 flex-shrink-0">
                 <AvatarFallback className="bg-amber-100 text-amber-600 text-xs">
-                  <Bot className="h-3 w-3" />
+                  <Bot className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 </AvatarFallback>
               </Avatar>
-              <div className="bg-white border border-amber-200 rounded-lg px-3 py-2">
+              <div className="bg-white border border-amber-200 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
                 <div className="flex items-center gap-2 text-gray-500">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" />
                   <span className="text-xs">Escribiendo...</span>
                 </div>
               </div>
@@ -250,22 +263,26 @@ INFORMACIÓN INSTITUCIONAL:
         </div>
       </CardContent>
 
-      <CardFooter className="border-t bg-white p-3">
-        <form onSubmit={handleSubmit} className="flex w-full gap-2">
+      <CardFooter className="border-t bg-white p-2 sm:p-3">
+        <form onSubmit={handleSubmit} className="flex w-full gap-1.5 sm:gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Escribe tu pregunta..."
-            className="flex-1 text-xs h-8 border-amber-200 focus:border-amber-400"
+            className="flex-1 text-xs h-7 sm:h-8 border-amber-200 focus:border-amber-400"
             disabled={isLoading}
           />
           <Button
             type="submit"
             disabled={isLoading || !input.trim()}
             size="sm"
-            className="h-8 w-8 p-0 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+            className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
           >
-            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            {isLoading ? (
+              <Loader2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin" />
+            ) : (
+              <Send className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+            )}
           </Button>
         </form>
       </CardFooter>

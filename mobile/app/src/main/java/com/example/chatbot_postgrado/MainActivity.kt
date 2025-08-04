@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     // CAMBIA ESTO: En lugar de Greeting, usa WebViewScreen
                     WebViewScreen(
-                        url = "http://192.168.0.195:5173/", // Cambia por tu URL
+                        url = "http://192.168.0.194:5173/", // Cambia por tu URL
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
