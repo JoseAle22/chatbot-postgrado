@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft } from "lucide-react"
+import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft, Sparkles } from "lucide-react"
 
 interface Message {
   id: string
@@ -253,103 +253,141 @@ INFORMACIÓN INSTITUCIONAL:
     }
   }
 
-  // Si es modal, usar estructura diferente para móvil vs desktop
-  if (isModal) {
-    return (
-      <div className="h-full w-full flex flex-col bg-white md:rounded-lg overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-3 md:p-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Bot className="h-5 w-5 md:h-6 md:w-6 text-white flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm md:text-lg font-semibold">Chatbot UJAP</div>
-                <div className="text-xs opacity-90 hidden sm:block">Postgrado</div>
+  // Responsive container classes
+  const containerClass = isModal
+    ? "h-full md:h-auto flex items-center justify-center p-0 md:p-0"
+    : "min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
+
+  return (
+    <div className={containerClass}>
+      <Card className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm">
+        {/* Header - Professional Design */}
+        <CardHeader className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-600/20 to-orange-600/20 backdrop-blur-3xl"></div>
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fillRule=evenodd%3E%3Cg fill=%23ffffff fillOpacity=0.05%3E%3Ccircle cx=30 cy=30 r=2/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+
+          <CardTitle className="flex items-center justify-between relative z-10">
+            {/* Left side - Title and status */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="relative">
+                <Avatar className="h-10 w-10 md:h-12 md:w-12 bg-white/20 backdrop-blur-sm border-2 border-white/30">
+                  <AvatarFallback className="bg-transparent text-white">
+                    <Bot className="h-5 w-5 md:h-6 md:w-6" />
+                  </AvatarFallback>
+                </Avatar>
+                {apiStatus === "working" && (
+                  <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                )}
               </div>
 
-              {/* Status indicators */}
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Powered by Gemini</span>
-                {apiStatus === "error" && <AlertCircle className="h-4 w-4 text-red-200" />}
-                {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" />}
+              <div className="min-w-0 flex-1">
+                <div className="text-lg md:text-xl font-bold tracking-tight">Asistente UJAP</div>
+                <div className="text-sm md:text-base opacity-90 font-medium">Dirección de Postgrado</div>
+              </div>
+
+              {/* Status indicators - Hidden on mobile */}
+              <div className="hidden lg:flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/30">
+                  <Sparkles className="h-3 w-3 text-yellow-200" />
+                  <span className="text-xs font-medium">Powered by Gemini</span>
+                </div>
+                {apiStatus === "error" && (
+                  <div className="flex items-center gap-1 bg-red-500/20 backdrop-blur-sm px-2 py-1 rounded-full border border-red-300/30">
+                    <AlertCircle className="h-3 w-3 text-red-200" />
+                    <span className="text-xs">Error</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+            {/* Right side - Action buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Test connection button */}
               {apiStatus !== "working" && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white hover:bg-white/20 text-xs px-2 py-1 h-auto hidden sm:flex"
+                  className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1.5 h-auto hidden md:flex transition-all duration-200 hover:scale-105"
                   onClick={testConnection}
                   disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                  <span className="hidden md:inline">Probar</span>
-                  <span className="md:hidden">Test</span>
+                  {isLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                  ) : (
+                    <AlertCircle className="h-3 w-3 mr-2" />
+                  )}
+                  <span className="text-xs font-medium">Probar</span>
                 </Button>
               )}
 
+              {/* Close/Back button */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20 px-2 py-1 h-auto"
+                className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-full h-9 w-9 p-0 transition-all duration-200 hover:scale-105"
                 onClick={handleGoBack}
               >
-                <X className="h-4 w-4" />
-                <span className="ml-1 hidden sm:inline">Cerrar</span>
+                {isModal ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
               </Button>
             </div>
-          </div>
-        </div>
+          </CardTitle>
+        </CardHeader>
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-hidden">
+        {/* Messages area - Enhanced Design */}
+        <CardContent className="flex-1 p-0 overflow-hidden bg-gradient-to-b from-gray-50/50 to-white">
           <div
             ref={scrollAreaRef}
-            className="h-full overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4"
+            className="h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth"
             style={{
               scrollbarWidth: "thin",
-              scrollbarColor: "#fbbf24 #fef3c7",
+              scrollbarColor: "#f59e0b #f3f4f6",
             }}
           >
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <div
                 key={message.id}
-                className={`flex gap-2 md:gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex gap-3 md:gap-4 animate-in slide-in-from-bottom-2 fade-in duration-500 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 {message.role === "assistant" && (
-                  <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
+                  <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
                     <AvatarFallback
-                      className={`${message.error ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}
+                      className={`${
+                        message.error
+                          ? "bg-gradient-to-br from-red-100 to-red-200 text-red-700"
+                          : "bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700"
+                      }`}
                     >
                       {message.error ? (
-                        <AlertCircle className="h-3 w-3 md:h-4 md:w-4" />
+                        <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
                       ) : (
-                        <Bot className="h-3 w-3 md:h-4 md:w-4" />
+                        <Bot className="h-4 w-4 md:h-5 md:w-5" />
                       )}
                     </AvatarFallback>
                   </Avatar>
                 )}
 
                 <div
-                  className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 md:px-4 md:py-2 ${
+                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-lg backdrop-blur-sm transition-all duration-200 hover:shadow-xl ${
                     message.role === "user"
-                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                      ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white ml-auto"
                       : message.error
-                        ? "bg-red-50 text-red-900 border border-red-200"
-                        : "bg-gray-50 text-gray-900 border border-gray-200 shadow-sm"
+                        ? "bg-gradient-to-br from-red-50 to-red-100 text-red-900 border border-red-200/50"
+                        : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
                   }`}
                 >
-                  <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words">
+                  <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words font-medium">
                     {message.content}
                   </p>
                 </div>
 
                 {message.role === "user" && (
-                  <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
-                    <AvatarFallback className="bg-gray-100 text-gray-600">
-                      <User className="h-3 w-3 md:h-4 md:w-4" />
+                  <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
+                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700">
+                      <User className="h-4 w-4 md:h-5 md:w-5" />
                     </AvatarFallback>
                   </Avatar>
                 )}
@@ -357,139 +395,26 @@ INFORMACIÓN INSTITUCIONAL:
             ))}
 
             {isLoading && (
-              <div className="flex gap-2 md:gap-3 justify-start">
-                <Avatar className="h-6 w-6 md:h-8 md:w-8 mt-1 flex-shrink-0">
-                  <AvatarFallback className="bg-amber-100 text-amber-600">
-                    <Bot className="h-3 w-3 md:h-4 md:w-4" />
+              <div className="flex gap-3 md:gap-4 justify-start animate-in slide-in-from-bottom-2 fade-in duration-300">
+                <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
+                  <AvatarFallback className="bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700">
+                    <Bot className="h-4 w-4 md:h-5 md:w-5" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-2 shadow-sm">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
-                    <span className="text-sm">Escribiendo...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Input area */}
-        <div className="border-t bg-white p-3 md:p-4 flex-shrink-0">
-          <form onSubmit={handleSubmit} className="flex w-full gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregúntame sobre programas UJAP..."
-              className="flex-1 border-gray-300 focus:border-amber-400 text-sm h-10 md:h-11"
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 h-10 md:h-11 px-4"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  // Versión no modal (página completa)
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl border-amber-200 bg-white">
-        <CardHeader className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-b backdrop-blur-sm rounded-t-lg">
-          <CardTitle className="flex items-center justify-between text-xl">
-            <div className="flex items-center gap-2">
-              <Bot className="h-6 w-6 text-white" />
-              Chatbot UJAP - Postgrado
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Powered by Gemini</span>
-                {apiStatus === "error" && <AlertCircle className="h-4 w-4 text-red-200" />}
-                {apiStatus === "working" && <div className="h-2 w-2 bg-green-300 rounded-full" />}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {apiStatus !== "working" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20 text-xs"
-                  onClick={testConnection}
-                  disabled={isLoading}
-                >
-                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                  Probar conexión
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={handleGoBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <div
-            ref={scrollAreaRef}
-            className="h-full overflow-y-auto p-4 space-y-4"
-            style={{
-              scrollbarWidth: "thin",
-              scrollbarColor: "#fbbf24 #fef3c7",
-            }}
-          >
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {message.role === "assistant" && (
-                  <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
-                    <AvatarFallback
-                      className={`${message.error ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}
-                    >
-                      {message.error ? <AlertCircle className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === "user"
-                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
-                      : message.error
-                        ? "bg-red-50 text-red-900 border border-red-200"
-                        : "bg-white text-gray-900 border border-amber-200"
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
-                </div>
-
-                {message.role === "user" && (
-                  <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
-                    <AvatarFallback className="bg-gray-100 text-gray-600">
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
-                  <AvatarFallback className="bg-amber-100 text-amber-600">
-                    <Bot className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-white border border-amber-200 rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Escribiendo...</span>
+                <div className="bg-white border border-gray-200/50 rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-lg">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <div className="flex space-x-1">
+                      <div className="h-2 w-2 bg-amber-500 rounded-full animate-bounce"></div>
+                      <div
+                        className="h-2 w-2 bg-amber-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="h-2 w-2 bg-amber-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">Escribiendo...</span>
                   </div>
                 </div>
               </div>
@@ -497,21 +422,40 @@ INFORMACIÓN INSTITUCIONAL:
           </div>
         </CardContent>
 
-        <CardFooter className="border-t bg-white/50 backdrop-blur-sm p-4 rounded-b-lg flex-shrink-0">
-          <form onSubmit={handleSubmit} className="flex w-full gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregúntame sobre programas, admisiones, contactos..."
-              className="flex-1 border-amber-200 focus:border-amber-400"
-              disabled={isLoading}
-            />
+        {/* Input area - Premium Design */}
+        <CardFooter className="border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl">
+          <form onSubmit={handleSubmit} className="flex w-full gap-3">
+            <div className="flex-1 relative">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  apiStatus === "error"
+                    ? "Configura la API key primero..."
+                    : "Escribe tu pregunta sobre postgrado UJAP..."
+                }
+                className="w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl h-12 md:h-14 px-4 md:px-5 text-sm md:text-base bg-white shadow-sm transition-all duration-200 focus:shadow-md pr-12"
+                disabled={isLoading}
+              />
+              {input && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+              )}
+            </div>
             <Button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+              className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 h-12 md:h-14 px-6 md:px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 disabled:hover:scale-100 font-medium"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <Send className="h-5 w-5 mr-0 md:mr-2" />
+                  <span className="hidden md:inline">Enviar</span>
+                </>
+              )}
             </Button>
           </form>
         </CardFooter>

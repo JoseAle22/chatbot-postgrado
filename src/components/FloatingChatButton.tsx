@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle } from "lucide-react"
+import { MessageCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ChatModal from "./ChatModal"
 import MiniChat from "./MiniChat"
@@ -35,19 +35,25 @@ export default function FloatingChatButton() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Enhanced Floating Button */}
       {!showMiniChat && (
         <Button
           onClick={handleButtonClick}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 z-40"
+          className="fixed bottom-6 right-6 h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-2xl hover:shadow-3xl transition-all duration-300 z-40 group animate-bounce hover:animate-none border-2 border-white/20 backdrop-blur-sm"
         >
-          <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+          <div className="relative">
+            <MessageCircle className="h-6 w-6 sm:h-7 sm:w-7 text-white transition-transform duration-300 group-hover:scale-110" />
+            <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-300 animate-pulse" />
+          </div>
+
+          {/* Ripple effect */}
+          <div className="absolute inset-0 rounded-full bg-white/20 animate-ping"></div>
         </Button>
       )}
 
       {/* Mini Chat - Solo en desktop */}
       {showMiniChat && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 hidden md:block">
+        <div className="fixed bottom-6 right-6 z-40 hidden md:block">
           <MiniChat onExpand={handleExpandMiniChat} onClose={handleCloseMiniChat} />
         </div>
       )}
