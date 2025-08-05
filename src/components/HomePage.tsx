@@ -123,7 +123,7 @@ export default function HomePage() {
         className="relative h-96 bg-cover bg-center flex items-center justify-center"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/placeholder.svg?height=400&width=1200')",
+            "linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/images/fondo.webp')",
         }}
       >
         <div className="text-center text-white">
