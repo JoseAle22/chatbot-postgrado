@@ -4,7 +4,6 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft, Sparkles } from "lucide-react"
 
@@ -32,7 +31,9 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -40,6 +41,56 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
     }
   }, [messages])
+
+  // Handle virtual keyboard on mobile
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleResize = () => {
+      // Solo en móviles
+      if (window.innerWidth >= 768) return
+
+      const viewport = window.visualViewport
+      if (viewport) {
+        const keyboardHeight = window.innerHeight - viewport.height
+        setKeyboardHeight(keyboardHeight > 0 ? keyboardHeight : 0)
+      }
+    }
+
+    const handleFocus = () => {
+      // Pequeño delay para que el teclado aparezca
+      setTimeout(() => {
+        if (inputRef.current && window.innerWidth < 768) {
+          inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+      }, 300)
+    }
+
+    // Visual Viewport API (mejor soporte)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize)
+    } else {
+      // Fallback para navegadores sin Visual Viewport API
+      window.addEventListener("resize", handleResize)
+    }
+
+    // Escuchar cuando el input recibe focus
+    const inputElement = inputRef.current
+    if (inputElement) {
+      inputElement.addEventListener("focus", handleFocus)
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize)
+      } else {
+        window.removeEventListener("resize", handleResize)
+      }
+      if (inputElement) {
+        inputElement.removeEventListener("focus", handleFocus)
+      }
+    }
+  }, [])
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
     const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
@@ -260,14 +311,20 @@ INFORMACIÓN INSTITUCIONAL:
 
   return (
     <div className={containerClass}>
-      <Card className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm">
+      <div
+        className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm"
+        style={{
+          // En móvil, ajustar la altura cuando aparece el teclado
+          height: isModal && keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : undefined,
+        }}
+      >
         {/* Header - Professional Design */}
-        <CardHeader className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden flex-shrink-0">
           {/* Background pattern */}
           <div className="absolute inset-0 bg-gradient-to-r from-amber-600/20 to-orange-600/20 backdrop-blur-3xl"></div>
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fillRule=evenodd%3E%3Cg fill=%23ffffff fillOpacity=0.05%3E%3Ccircle cx=30 cy=30 r=2/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
 
-          <CardTitle className="flex items-center justify-between relative z-10">
+          <div className="flex items-center justify-between relative z-10">
             {/* Left side - Title and status */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="relative">
@@ -331,17 +388,25 @@ INFORMACIÓN INSTITUCIONAL:
                 {isModal ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
               </Button>
             </div>
-          </CardTitle>
-        </CardHeader>
+          </div>
+        </div>
 
         {/* Messages area - Enhanced Design */}
-        <CardContent className="flex-1 p-0 overflow-hidden bg-gradient-to-b from-gray-50/50 to-white">
+        <div
+          className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/50 to-white"
+          style={{
+            // Ajustar padding bottom en móvil cuando hay teclado
+            paddingBottom: keyboardHeight > 0 ? "0px" : undefined,
+          }}
+        >
           <div
             ref={scrollAreaRef}
             className="h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#f59e0b #f3f4f6",
+              // En móvil con teclado, reducir el padding bottom para dar más espacio
+              paddingBottom: keyboardHeight > 0 ? "8px" : undefined,
             }}
           >
             {messages.map((message, index) => (
@@ -420,13 +485,26 @@ INFORMACIÓN INSTITUCIONAL:
               </div>
             )}
           </div>
-        </CardContent>
+        </div>
 
-        {/* Input area - Premium Design */}
-        <CardFooter className="border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl">
+        {/* Input area - Fixed position on mobile with keyboard */}
+        <div
+          className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl flex-shrink-0"
+          style={{
+            // En móvil, posición fija cuando hay teclado
+            position: keyboardHeight > 0 ? "fixed" : "relative",
+            bottom: keyboardHeight > 0 ? "0" : "auto",
+            left: keyboardHeight > 0 ? "0" : "auto",
+            right: keyboardHeight > 0 ? "0" : "auto",
+            zIndex: keyboardHeight > 0 ? 1000 : "auto",
+            // Sombra superior cuando está fijo
+            boxShadow: keyboardHeight > 0 ? "0 -4px 20px rgba(0,0,0,0.1)" : "none",
+          }}
+        >
           <form onSubmit={handleSubmit} className="flex w-full gap-3">
             <div className="flex-1 relative">
               <Input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
@@ -436,6 +514,10 @@ INFORMACIÓN INSTITUCIONAL:
                 }
                 className="w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl h-12 md:h-14 px-4 md:px-5 text-sm md:text-base bg-white shadow-sm transition-all duration-200 focus:shadow-md pr-12"
                 disabled={isLoading}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
               {input && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -458,8 +540,8 @@ INFORMACIÓN INSTITUCIONAL:
               )}
             </Button>
           </form>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
