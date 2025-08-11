@@ -128,7 +128,14 @@ INFORMACIÓN INSTITUCIONAL:
 - La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela
 - Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario
 - Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales
-- Promueve la excelencia, innovación e internacionalización`
+- Promueve la excelencia, innovación e internacionalización.
+
+FORMATO DE RESPUESTA:
+- Responde siempre en texto claro y ordenado.
+- No uses asteriscos (*), guiones (-) ni símbolos innecesarios.
+- Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.
+- Separa las secciones con títulos en mayúsculas.
+- No uses Markdown ni código.`
 
     // Preparar el historial de conversación
     const contents = [
@@ -210,6 +217,14 @@ INFORMACIÓN INSTITUCIONAL:
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
   }
 
+  const cleanResponse = (text: string) => {
+    return text
+      .replace(/\*/g, "") // Quita todos los asteriscos
+      .replace(/^- /gm, "") // Quita guiones al inicio de líneas
+      .replace(/\n{3,}/g, "\n\n") // Reduce saltos de línea excesivos
+      .trim()
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
@@ -231,10 +246,10 @@ INFORMACIÓN INSTITUCIONAL:
       const response = await callGeminiAPI(currentInput, messages)
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-      }
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: cleanResponse(response),
+    }
 
       setMessages((prev) => [...prev, assistantMessage])
       setApiStatus("working")
@@ -248,18 +263,18 @@ INFORMACIÓN INSTITUCIONAL:
       if (error instanceof Error) {
         if (error.message.includes("API key")) {
           errorMessage =
-            "⚠️ **Configuración requerida**: La API key de Google Gemini no está configurada correctamente.\n\n📋 **Pasos para configurar:**\n1. Crea un archivo `.env.local` en la raíz del proyecto\n2. Agrega: `VITE_GOOGLE_GENERATIVE_AI_API_KEY=tu_api_key`\n3. Obtén tu API key en: https://makersuite.google.com/app/apikey\n4. Reinicia el servidor con `npm run dev`"
+            "⚠️ Configuración requerida: La API key de Google Gemini no está configurada correctamente.\n\n📋 Pasos para configurar:\n1. Crea un archivo `.env.local` en la raíz del proyecto\n2. Agrega: `VITE_GOOGLE_GENERATIVE_AI_API_KEY=tu_api_key`\n3. Obtén tu API key en: https://makersuite.google.com/app/apikey\n4. Reinicia el servidor con `npm run dev`"
         } else if (error.message.includes("403") || error.message.includes("401")) {
           errorMessage =
-            "🔑 **Error de autenticación**: La API key no es válida o ha expirado.\n\n✅ **Soluciones:**\n- Verifica que la API key sea correcta\n- Genera una nueva API key en Google AI Studio\n- Asegúrate de que la API esté habilitada"
+            "🔑 Error de autenticación: La API key no es válida o ha expirado.\n\n✅ Soluciones:\n- Verifica que la API key sea correcta\n- Genera una nueva API key en Google AI Studio\n- Asegúrate de que la API esté habilitada"
         } else if (error.message.includes("429")) {
           errorMessage =
-            "⏱️ **Límite alcanzado**: Se ha excedido el límite de la API.\n\n⏰ **Intenta:**\n- Esperar unos minutos antes de volver a intentar\n- Verificar tu cuota en Google AI Studio"
+            "⏱️ Límite alcanzado: Se ha excedido el límite de la API.\n\n⏰ Intenta:\n- Esperar unos minutos antes de volver a intentar\n- Verificar tu cuota en Google AI Studio"
         } else if (error.message.includes("400")) {
           errorMessage =
-            "📝 **Error en la solicitud**: Hay un problema con el formato de la consulta.\n\n🔄 **Intenta:**\n- Reformular tu pregunta\n- Usar un mensaje más corto"
+            "📝 Error en la solicitud: Hay un problema con el formato de la consulta.\n\n🔄 Intenta:\n- Reformular tu pregunta\n- Usar un mensaje más corto"
         } else {
-          errorMessage = `❌ **Error**: ${error.message}\n\n📞 **Contacto directo:**\n📧 coordinacion.postgrado@ujap.edu.ve\n📞 +582418710903`
+          errorMessage = `❌ Error: ${error.message}\n\n📞 Contacto directo:\n📧 coordinacion.postgrado@ujap.edu.ve\n📞 +582418710903`
         }
       }
 
@@ -293,7 +308,7 @@ INFORMACIÓN INSTITUCIONAL:
         id: Date.now().toString(),
         role: "assistant",
         content:
-          "✅ **Conexión exitosa**: La API de Gemini está funcionando correctamente. ¡Ya puedes hacer tus preguntas sobre los programas de postgrado UJAP!",
+          "✅ Conexión exitosa: La API de Gemini está funcionando correctamente. ¡Ya puedes hacer tus preguntas sobre los programas de postgrado UJAP!",
       }
       setMessages((prev) => [...prev, testMessage])
     } catch (error) {
