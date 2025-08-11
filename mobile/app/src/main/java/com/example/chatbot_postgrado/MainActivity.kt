@@ -17,6 +17,8 @@ import com.example.chatbot_postgrado.ui.theme.ChatbotpostgradoTheme
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.ui.viewinterop.AndroidView
+import android.webkit.WebSettings
+import android.view.ViewGroup
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,7 +63,18 @@ fun WebViewScreen(
                     domStorageEnabled = true
                     loadWithOverviewMode = true
                     useWideViewPort = true
+                    setSupportZoom(false)
+                    builtInZoomControls = false
+                    displayZoomControls = false
+                    layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+                    cacheMode = WebSettings.LOAD_DEFAULT
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
+
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
 
                 loadUrl(url)
             }
