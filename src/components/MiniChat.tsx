@@ -82,7 +82,8 @@ FORMATO DE RESPUESTA:
 - No uses asteriscos (*), guiones (-) ni símbolos innecesarios.
 - Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.
 - Separa las secciones con títulos en mayúsculas.
-- No uses Markdown ni código.`
+- No uses Markdown ni código.
+- Que no use negritas en las palabras.`
 
     const contents = [
       {
