@@ -21,15 +21,9 @@ interface MiniChatProps {
 }
 
 export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "¡Hola! Soy tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?",
-    },
-  ])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [messages, setMessages] = useState<any[]>([])
+  const [input, setInput] = useState<string>("")
+  const [isLoading, setIsLoading] = useState<boolean>(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -39,102 +33,48 @@ export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
     }
   }, [messages])
 
-  const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
-    const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
-
-    if (!API_KEY) {
-      throw new Error("API key no configurada")
-    }
-
-    const systemPrompt = `Eres un asistente virtual especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
-
-Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
-
-PROGRAMAS ACADÉMICOS:
-- Doctorados: Ciencias de la Educación, Orientación
-- Maestrías: Gerencia de la Comunicación Organizacional, Gerencia y Tecnología de la Información, Educación para el Desarrollo Sustentable
-- Especializaciones: Administración de Empresas, Automatización Industrial, Derecho Administrativo, Derecho Procesal Civil, Docencia en Educación Superior, Gerencia de Control de Calidad e Inspección de Obras, Gestión Aduanera y Tributaria, Gestión y Control de las Finanzas Públicas, Telecomunicaciones
-
-INFORMACIÓN DE CONTACTO:
-- Email: coordinacion.postgrado@ujap.edu.ve
-- Teléfono: +582418710903
-- UJAP General: +582418714240 ext. 1260
-- Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo
-
-AUTORIDADES:
-- Directora General: Dra. Haydee Páez (también Coordinadora del Doctorado en Ciencias de la Educación)
-- Dra. Omaira Lessire de González: Coordinadora del Doctorado en Orientación
-- Dra. Thania Oberto: Coordinadora de Maestría en Gerencia de la Comunicación Organizacional y varias especializaciones
-- MSc. Wilmer Sanz: Coordinador de Especialización en Automatización Industrial
-- MSc. Susan León: Coordinadora de Maestría en Gerencia y Tecnología de la Información y Especialización en Docencia
-- MSc. Ledys Herrera: Coordinadora de Especialización en Derecho Procesal Civil
-- Esp. Federico Estaba: Coordinador de Especialización en Gestión y Control de las Finanzas Públicas
-- Esp. Adriana Materán: Coordinadora de Especialización en Odontopediatría
-
-INFORMACIÓN INSTITUCIONAL:
-- La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela
-- Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario
-- Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales
-- Promueve la excelencia, innovación e internacionalización`
-
-    const contents = [
-      {
-        role: "user",
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Entendido. Te ayudo con información sobre postgrado UJAP." }],
-      },
-    ]
-
-    // Agregar historial reciente (últimos 6 mensajes para el mini chat)
-    const recentHistory = conversationHistory.slice(-6)
-    for (const msg of recentHistory) {
-      if (msg.role === "user") {
-        contents.push({
-          role: "user",
-          parts: [{ text: msg.content }],
-        })
-      } else if (msg.role === "assistant" && !msg.error) {
-        contents.push({
-          role: "model",
-          parts: [{ text: msg.content }],
-        })
+  // Define your API key here or use an environment variable for security
+  const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+  
+    const callGeminiAPI = async (contents: any): Promise<string> => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                { role: "user", parts: [{ text: contents }] }
+              ],
+              generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 512,
+              },
+            }),
+          },
+        )
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`)
+        }
+        const data = await response.json()
+        // Extract the assistant's reply from the API response
+        const reply =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "No se pudo obtener respuesta."
+        return reply
+      } catch (error) {
+        // Handle error...
+        return "Error temporal. Intenta expandir el chat para más opciones o contacta: +582418710903"
+      } finally {
+        setIsLoading(false)
       }
     }
-
-    contents.push({
-      role: "user",
-      parts: [{ text: userMessage }],
-    })
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 512, // Respuestas más cortas para mini chat
-          },
-        }),
-      },
-    )
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
-  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -152,7 +92,7 @@ INFORMACIÓN INSTITUCIONAL:
     setIsLoading(true)
 
     try {
-      const response = await callGeminiAPI(currentInput, messages)
+      const response = await callGeminiAPI(currentInput)
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -210,7 +150,7 @@ INFORMACIÓN INSTITUCIONAL:
           ref={scrollAreaRef}
           className="h-full overflow-y-auto p-2 sm:p-3 space-y-2 sm:space-y-3 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100"
         >
-          {messages.map((message) => (
+          {messages.map((message: Message): React.ReactNode => (
             <div
               key={message.id}
               className={`flex gap-1 sm:gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
