@@ -123,7 +123,7 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   }, [isWebView])
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
-    const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
 
     if (!API_KEY) {
       console.error("API Key no encontrada")
