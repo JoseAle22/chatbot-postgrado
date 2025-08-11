@@ -32,7 +32,6 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const [isWebView, setIsWebView] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -43,64 +42,35 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     }
   }, [messages])
 
+  // Handle virtual keyboard on mobile
   useEffect(() => {
-    // Detect if running in WebView
-    const userAgent = navigator.userAgent.toLowerCase()
-    const isInWebView =
-      userAgent.includes("wv") || userAgent.includes("webview") || (window as any).ReactNativeWebView !== undefined
-    setIsWebView(isInWebView)
+    if (typeof window === "undefined") return
 
     const handleResize = () => {
       // Solo en móviles
       if (window.innerWidth >= 768) return
 
-      // Enhanced detection for WebView
-      if (isInWebView) {
-        // For WebView, use window resize detection
-        const currentHeight = window.innerHeight
-        const screenHeight = window.screen.height
-        const keyboardHeight = screenHeight - currentHeight
-        setKeyboardHeight(keyboardHeight > 100 ? keyboardHeight : 0)
-      } else {
-        // For regular browsers, use Visual Viewport API
-        const viewport = window.visualViewport
-        if (viewport) {
-          const keyboardHeight = window.innerHeight - viewport.height
-          setKeyboardHeight(keyboardHeight > 0 ? keyboardHeight : 0)
-        }
+      const viewport = window.visualViewport
+      if (viewport) {
+        const keyboardHeight = window.innerHeight - viewport.height
+        setKeyboardHeight(keyboardHeight > 0 ? keyboardHeight : 0)
       }
     }
 
     const handleFocus = () => {
-      // Enhanced focus handling for WebView
-      setTimeout(
-        () => {
-          if (inputRef.current && window.innerWidth < 768) {
-            if (isInWebView) {
-              // For WebView, scroll to input with more aggressive approach
-              inputRef.current.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-                inline: "nearest",
-              })
-              // Additional scroll for WebView
-              setTimeout(() => {
-                window.scrollTo(0, document.body.scrollHeight)
-              }, 100)
-            } else {
-              inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
-            }
-          }
-        },
-        isInWebView ? 500 : 300,
-      ) // Longer delay for WebView
+      // Pequeño delay para que el teclado aparezca
+      setTimeout(() => {
+        if (inputRef.current && window.innerWidth < 768) {
+          inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+      }, 300)
     }
 
     // Visual Viewport API (mejor soporte)
-    if (window.visualViewport && !isInWebView) {
+    if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleResize)
     } else {
-      // Fallback para navegadores sin Visual Viewport API o WebView
+      // Fallback para navegadores sin Visual Viewport API
       window.addEventListener("resize", handleResize)
     }
 
@@ -111,7 +81,7 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     }
 
     return () => {
-      if (window.visualViewport && !isInWebView) {
+      if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", handleResize)
       } else {
         window.removeEventListener("resize", handleResize)
@@ -120,106 +90,96 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
         inputElement.removeEventListener("focus", handleFocus)
       }
     }
-  }, [isWebView])
+  }, [])
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
     const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
 
     if (!API_KEY) {
-      console.error("API Key no encontrada")
-      setApiStatus("error")
-      throw new Error("API Key no configurada")
+      throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
     }
 
-    setApiStatus("working")
+    const systemPrompt = `Eres un asistente virtual especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
 
-    const context = `Eres un asistente virtual especializado de la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). Tu función es proporcionar información precisa y útil sobre los programas de postgrado de la UJAP.
+Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
-INFORMACIÓN INSTITUCIONAL:
-- Universidad José Antonio Páez (UJAP)
-- Dirección de Postgrado
-- Ubicación: San Diego, Estado Carabobo, Venezuela
-
-PROGRAMAS DISPONIBLES:
-
-DOCTORADOS:
-1. Doctorado en Ciencias de la Educación
-2. Doctorado en Ciencias Gerenciales
-
-MAESTRÍAS:
-1. Maestría en Administración de Empresas (MBA)
-2. Maestría en Gerencia de Recursos Humanos
-3. Maestría en Finanzas
-4. Maestría en Mercadeo
-5. Maestría en Educación Superior
-6. Maestría en Tecnología Educativa
-7. Maestría en Gerencia de la Construcción
-8. Maestría en Ingeniería Industrial
-9. Maestría en Seguridad Industrial
-10. Maestría en Derecho Procesal
-11. Maestría en Derecho Laboral
-12. Maestría en Ciencias Penales y Criminológicas
-
-ESPECIALIZACIONES:
-1. Especialización en Gerencia de Mercadeo
-2. Especialización en Finanzas
-3. Especialización en Recursos Humanos
-4. Especialización en Derecho Procesal Civil
-5. Especialización en Derecho Laboral
-6. Especialización en Derecho Penal
-7. Especialización en Seguridad Industrial
-8. Especialización en Ingeniería de Mantenimiento
+PROGRAMAS ACADÉMICOS:
+- Doctorados: Ciencias de la Educación, Orientación
+- Maestrías: Gerencia de la Comunicación Organizacional, Gerencia y Tecnología de la Información, Educación para el Desarrollo Sustentable
+- Especializaciones: Administración de Empresas, Automatización Industrial, Derecho Administrativo, Derecho Procesal Civil, Docencia en Educación Superior, Gerencia de Control de Calidad e Inspección de Obras, Gestión Aduanera y Tributaria, Gestión y Control de las Finanzas Públicas, Telecomunicaciones
 
 INFORMACIÓN DE CONTACTO:
-- Teléfono: +58 241-8713011
-- Email: postgrado@ujap.edu.ve
-- Dirección: Autopista Regional del Centro, Km 23, San Diego, Estado Carabobo
-- Horario de atención: Lunes a Viernes de 8:00 AM a 5:00 PM
+- Email: coordinacion.postgrado@ujap.edu.ve
+- Teléfono: +582418710903
+- UJAP General: +582418714240 ext. 1260
+- Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo
 
-REQUISITOS GENERALES DE ADMISIÓN:
-- Título universitario de pregrado debidamente legalizado
-- Notas certificadas de pregrado
-- Currículum vitae actualizado
-- Carta de exposición de motivos
-- Dos (2) cartas de recomendación
-- Copia de la cédula de identidad
-- Fotografías tipo carnet
+AUTORIDADES:
+- Directora General: Dra. Haydee Páez (también Coordinadora del Doctorado en Ciencias de la Educación)
+- Dra. Omaira Lessire de González: Coordinadora del Doctorado en Orientación
+- Dra. Thania Oberto: Coordinadora de Maestría en Gerencia de la Comunicación Organizacional y varias especializaciones
+- MSc. Wilmer Sanz: Coordinador de Especialización en Automatización Industrial
+- MSc. Susan León: Coordinadora de Maestría en Gerencia y Tecnología de la Información y Especialización en Docencia
+- MSc. Ledys Herrera: Coordinadora de Especialización en Derecho Procesal Civil
+- Esp. Federico Estaba: Coordinador de Especialización en Gestión y Control de las Finanzas Públicas
+- Esp. Adriana Materán: Coordinadora de Especialización en Odontopediatría
 
-INSTRUCCIONES:
-- Responde siempre en español
-- Sé cordial y profesional
-- Proporciona información específica sobre los programas cuando sea solicitada
-- Si no tienes información específica sobre algo, sugiere contactar directamente a la Dirección de Postgrado
-- Mantén las respuestas concisas pero informativas
-- Siempre ofrece ayuda adicional al final de tu respuesta
+INFORMACIÓN INSTITUCIONAL:
+- La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela
+- Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario
+- Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales
+- Promueve la excelencia, innovación e internacionalización.
 
-Conversación anterior:
-${conversationHistory
-  .slice(-5)
-  .map((msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`)
-  .join("\n")}
+FORMATO DE RESPUESTA:
+- Responde siempre en texto claro y ordenado.
+- No uses asteriscos (*), guiones (-) ni símbolos innecesarios.
+- Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.
+- Separa las secciones con títulos en mayúsculas.
+- No uses Markdown ni código.`
 
-Usuario: ${userMessage}
+    // Preparar el historial de conversación
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: systemPrompt }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP." }],
+      },
+    ]
 
-Responde como el asistente virtual de postgrado UJAP:`
+    // Agregar historial de conversación (últimos 10 mensajes para no exceder límites)
+    const recentHistory = conversationHistory.slice(-10)
+    for (const msg of recentHistory) {
+      if (msg.role === "user") {
+        contents.push({
+          role: "user",
+          parts: [{ text: msg.content }],
+        })
+      } else if (msg.role === "assistant" && !msg.error) {
+        contents.push({
+          role: "model",
+          parts: [{ text: msg.content }],
+        })
+      }
+    }
+
+    // Agregar el mensaje actual
+    contents.push({
+      role: "user",
+      parts: [{ text: userMessage }],
+    })
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: context,
-                },
-              ],
-            },
-          ],
+          contents,
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -249,15 +209,20 @@ Responde como el asistente virtual de postgrado UJAP:`
     )
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Error en la respuesta de Gemini:", errorText)
-      throw new Error(`Error ${response.status}: ${errorText}`)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`)
     }
 
     const data = await response.json()
-    console.log("Respuesta de Gemini:", data)
-
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
+  }
+
+  const cleanResponse = (text: string) => {
+    return text
+      .replace(/\*/g, "") // Quita todos los asteriscos
+      .replace(/^- /gm, "") // Quita guiones al inicio de líneas
+      .replace(/\n{3,}/g, "\n\n") // Reduce saltos de línea excesivos
+      .trim()
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -281,26 +246,45 @@ Responde como el asistente virtual de postgrado UJAP:`
       const response = await callGeminiAPI(currentInput, messages)
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-      }
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: cleanResponse(response),
+    }
 
       setMessages((prev) => [...prev, assistantMessage])
+      setApiStatus("working")
     } catch (error) {
-      console.error("Error al llamar a Gemini:", error)
+      console.error("Error completo:", error)
+      setApiStatus("error")
 
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          error instanceof Error && error.message.includes("API Key")
-            ? "⚠️ **Error de configuración**: La API key de Gemini no está configurada correctamente. Por favor, contacta al administrador del sistema."
-            : "Lo siento, hubo un error al procesar tu solicitud. Por favor, intenta nuevamente o contacta directamente a la Dirección de Postgrado al +58 241-8713011.",
-        error: true,
+      // Determinar el tipo de error y mostrar mensaje apropiado
+      let errorMessage = "Lo siento, ha ocurrido un error inesperado."
+
+      if (error instanceof Error) {
+        if (error.message.includes("API key")) {
+          errorMessage =
+            "⚠️ Configuración requerida: La API key de Google Gemini no está configurada correctamente.\n\n📋 Pasos para configurar:\n1. Crea un archivo `.env.local` en la raíz del proyecto\n2. Agrega: `VITE_GOOGLE_GENERATIVE_AI_API_KEY=tu_api_key`\n3. Obtén tu API key en: https://makersuite.google.com/app/apikey\n4. Reinicia el servidor con `npm run dev`"
+        } else if (error.message.includes("403") || error.message.includes("401")) {
+          errorMessage =
+            "🔑 Error de autenticación: La API key no es válida o ha expirado.\n\n✅ Soluciones:\n- Verifica que la API key sea correcta\n- Genera una nueva API key en Google AI Studio\n- Asegúrate de que la API esté habilitada"
+        } else if (error.message.includes("429")) {
+          errorMessage =
+            "⏱️ Límite alcanzado: Se ha excedido el límite de la API.\n\n⏰ Intenta:\n- Esperar unos minutos antes de volver a intentar\n- Verificar tu cuota en Google AI Studio"
+        } else if (error.message.includes("400")) {
+          errorMessage =
+            "📝 Error en la solicitud: Hay un problema con el formato de la consulta.\n\n🔄 Intenta:\n- Reformular tu pregunta\n- Usar un mensaje más corto"
+        } else {
+          errorMessage = `❌ Error: ${error.message}\n\n📞 Contacto directo:\n📧 coordinacion.postgrado@ujap.edu.ve\n📞 +582418710903`
+        }
       }
 
-      setMessages((prev) => [...prev, errorMessage])
+      const errorResponseMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: errorMessage,
+        error: true,
+      }
+      setMessages((prev) => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
     }
@@ -324,7 +308,7 @@ Responde como el asistente virtual de postgrado UJAP:`
         id: Date.now().toString(),
         role: "assistant",
         content:
-          "✅ **Conexión exitosa**: La API de Gemini está funcionando correctamente. ¡Ya puedes hacer tus preguntas sobre los programas de postgrado UJAP!",
+          "✅ Conexión exitosa: La API de Gemini está funcionando correctamente. ¡Ya puedes hacer tus preguntas sobre los programas de postgrado UJAP!",
       }
       setMessages((prev) => [...prev, testMessage])
     } catch (error) {
@@ -522,13 +506,14 @@ Responde como el asistente virtual de postgrado UJAP:`
         <div
           className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl flex-shrink-0"
           style={{
-            position: isWebView && keyboardHeight > 0 ? "fixed" : "relative",
-            bottom: isWebView && keyboardHeight > 0 ? "0" : "auto",
-            left: isWebView && keyboardHeight > 0 ? "0" : "auto",
-            right: isWebView && keyboardHeight > 0 ? "0" : "auto",
-            zIndex: isWebView && keyboardHeight > 0 ? 1000 : "auto",
-            boxShadow: isWebView && keyboardHeight > 0 ? "0 -4px 20px rgba(0,0,0,0.1)" : "none",
-            transition: "all 0.3s ease-in-out",
+            // En móvil, posición fija cuando hay teclado
+            position: keyboardHeight > 0 ? "fixed" : "relative",
+            bottom: keyboardHeight > 0 ? "0" : "auto",
+            left: keyboardHeight > 0 ? "0" : "auto",
+            right: keyboardHeight > 0 ? "0" : "auto",
+            zIndex: keyboardHeight > 0 ? 1000 : "auto",
+            // Sombra superior cuando está fijo
+            boxShadow: keyboardHeight > 0 ? "0 -4px 20px rgba(0,0,0,0.1)" : "none",
           }}
         >
           <form onSubmit={handleSubmit} className="flex w-full gap-3">
