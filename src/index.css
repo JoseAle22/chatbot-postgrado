@@ -24,6 +24,8 @@
     --input: 35 20% 95%;
     --ring: 35 65% 55%;
     --radius: 0.75rem;
+    --vh: 1vh;
+    --dvh: 1dvh;
   }
 
   .dark {
@@ -66,6 +68,37 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Viewport dinámico para móviles - soluciona problemas con teclado virtual */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic Viewport Height - se ajusta automáticamente al teclado */
+  }
+
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh; /* Dynamic Viewport Height */
+  }
+
+  .h-full-safe {
+    height: 100%;
+    height: 100dvh; /* Para contenedores que necesitan altura completa */
+  }
+
+  /* Fallback para navegadores sin soporte dvh */
+  @supports not (height: 100dvh) {
+    .min-h-screen-safe {
+      min-height: calc(var(--vh, 1vh) * 100);
+    }
+
+    .h-screen-safe {
+      height: calc(var(--vh, 1vh) * 100);
+    }
+
+    .h-full-safe {
+      height: calc(var(--vh, 1vh) * 100);
+    }
   }
 
   /* Estilos personalizados para scrollbar */

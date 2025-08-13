@@ -144,7 +144,6 @@ FORMATO DE RESPUESTA:
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
   }
 
-  
   const cleanResponse = (text: string) => {
     return text
       .replace(/\*/g, "") // Quita todos los asteriscos
@@ -172,10 +171,10 @@ FORMATO DE RESPUESTA:
       const response = await callGeminiAPI(currentInput, messages)
 
       const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: cleanResponse(response),
-    }
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: cleanResponse(response),
+      }
 
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {

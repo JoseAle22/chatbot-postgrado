@@ -1,24 +1,22 @@
 package com.example.chatbot_postgrado
 
 import android.os.Bundle
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.chatbot_postgrado.ui.theme.ChatbotpostgradoTheme
-
-// NUEVOS IMPORTS PARA WEBVIEW
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.ui.viewinterop.AndroidView
-import android.webkit.WebSettings
-import android.view.ViewGroup
+import com.example.chatbot_postgrado.ui.theme.ChatbotpostgradoTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,10 +24,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ChatbotpostgradoTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // CAMBIA ESTO: En lugar de Greeting, usa WebViewScreen
+                Scaffold(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .imePadding() // Ajusta la UI cuando aparece el teclado
+                ) { innerPadding ->
                     WebViewScreen(
-                        url = "https://chatbot-postgrado.vercel.app/", // Cambia por tu URL
+                        url = "https://chatbot-postgrado.vercel.app/",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -39,58 +40,28 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-// AGREGA ESTE COMPONENTE AQUÍ ⬇️
-@Composable
 fun WebViewScreen(
     url: String,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val webView = remember {
+        WebView(context).apply {
+            webViewClient = WebViewClient()
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.loadWithOverviewMode = true
+            settings.useWideViewPort = true
+            loadUrl(url)
+        }
+    }
+
     AndroidView(
         modifier = modifier.fillMaxSize(),
-        factory = { context ->
-            WebView(context).apply {
-                webViewClient = WebViewClient()
-
-                settings.apply {
-                    javaScriptEnabled = true
-                    domStorageEnabled = true
-                    loadWithOverviewMode = true
-                    useWideViewPort = true
-                    setSupportZoom(false)
-                    builtInZoomControls = false
-                    displayZoomControls = false
-                    layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
-                    cacheMode = WebSettings.LOAD_DEFAULT
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                }
-
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-
-                loadUrl(url)
-            }
-        }
+        factory = { webView }
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ChatbotpostgradoTheme {
-        Greeting("Android")
-    }
-}
-
-// OPCIONAL: Preview para WebView
 @Preview(showBackground = true)
 @Composable
 fun WebViewPreview() {

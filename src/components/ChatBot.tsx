@@ -31,7 +31,6 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -42,50 +41,46 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     }
   }, [messages])
 
-  // Handle virtual keyboard on mobile
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const handleResize = () => {
-      // Solo en móviles
-      if (window.innerWidth >= 768) return
+    // Configurar variables CSS para viewport dinámico (fallback para navegadores sin dvh)
+    const setViewportHeight = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty("--vh", `${vh}px`)
+    }
 
-      const viewport = window.visualViewport
-      if (viewport) {
-        const keyboardHeight = window.innerHeight - viewport.height
-        setKeyboardHeight(keyboardHeight > 0 ? keyboardHeight : 0)
+    // Configurar al cargar
+    setViewportHeight()
+
+    // Actualizar en resize (incluye cambios de teclado)
+    const handleResize = () => {
+      setViewportHeight()
+    }
+
+    // Manejar focus del input para scroll suave
+    const handleFocus = () => {
+      if (inputRef.current && window.innerWidth < 768) {
+        setTimeout(() => {
+          inputRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          })
+        }, 300)
       }
     }
 
-    const handleFocus = () => {
-      // Pequeño delay para que el teclado aparezca
-      setTimeout(() => {
-        if (inputRef.current && window.innerWidth < 768) {
-          inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
-        }
-      }, 300)
-    }
+    window.addEventListener("resize", handleResize)
+    window.addEventListener("orientationchange", handleResize)
 
-    // Visual Viewport API (mejor soporte)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleResize)
-    } else {
-      // Fallback para navegadores sin Visual Viewport API
-      window.addEventListener("resize", handleResize)
-    }
-
-    // Escuchar cuando el input recibe focus
     const inputElement = inputRef.current
     if (inputElement) {
       inputElement.addEventListener("focus", handleFocus)
     }
 
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleResize)
-      } else {
-        window.removeEventListener("resize", handleResize)
-      }
+      window.removeEventListener("resize", handleResize)
+      window.removeEventListener("orientationchange", handleResize)
       if (inputElement) {
         inputElement.removeEventListener("focus", handleFocus)
       }
@@ -246,10 +241,10 @@ FORMATO DE RESPUESTA:
       const response = await callGeminiAPI(currentInput, messages)
 
       const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: cleanResponse(response),
-    }
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: cleanResponse(response),
+      }
 
       setMessages((prev) => [...prev, assistantMessage])
       setApiStatus("working")
@@ -319,20 +314,13 @@ FORMATO DE RESPUESTA:
     }
   }
 
-  // Responsive container classes
   const containerClass = isModal
     ? "h-full md:h-auto flex items-center justify-center p-0 md:p-0"
-    : "min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
+    : "min-h-screen-safe bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
 
   return (
     <div className={containerClass}>
-      <div
-        className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm"
-        style={{
-          // En móvil, ajustar la altura cuando aparece el teclado
-          height: isModal && keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : undefined,
-        }}
-      >
+      <div className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm">
         {/* Header - Professional Design */}
         <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden flex-shrink-0">
           {/* Background pattern */}
@@ -406,22 +394,13 @@ FORMATO DE RESPUESTA:
           </div>
         </div>
 
-        {/* Messages area - Enhanced Design */}
-        <div
-          className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/50 to-white"
-          style={{
-            // Ajustar padding bottom en móvil cuando hay teclado
-            paddingBottom: keyboardHeight > 0 ? "0px" : undefined,
-          }}
-        >
+        <div className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/50 to-white">
           <div
             ref={scrollAreaRef}
             className="h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth"
             style={{
               scrollbarWidth: "thin",
               scrollbarColor: "#f59e0b #f3f4f6",
-              // En móvil con teclado, reducir el padding bottom para dar más espacio
-              paddingBottom: keyboardHeight > 0 ? "8px" : undefined,
             }}
           >
             {messages.map((message, index) => (
@@ -502,20 +481,7 @@ FORMATO DE RESPUESTA:
           </div>
         </div>
 
-        {/* Input area - Fixed position on mobile with keyboard */}
-        <div
-          className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl flex-shrink-0"
-          style={{
-            // En móvil, posición fija cuando hay teclado
-            position: keyboardHeight > 0 ? "fixed" : "relative",
-            bottom: keyboardHeight > 0 ? "0" : "auto",
-            left: keyboardHeight > 0 ? "0" : "auto",
-            right: keyboardHeight > 0 ? "0" : "auto",
-            zIndex: keyboardHeight > 0 ? 1000 : "auto",
-            // Sombra superior cuando está fijo
-            boxShadow: keyboardHeight > 0 ? "0 -4px 20px rgba(0,0,0,0.1)" : "none",
-          }}
-        >
+        <div className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl flex-shrink-0">
           <form onSubmit={handleSubmit} className="flex w-full gap-3">
             <div className="flex-1 relative">
               <Input
