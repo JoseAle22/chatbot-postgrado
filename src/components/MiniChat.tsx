@@ -22,31 +22,34 @@ interface MiniChatProps {
 
 export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "¡Hola, soy Ujapito! Tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?",
-    },
+    { id: "welcome", role: "assistant", content: "¡Hola, soy Ujapito! Tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?" },
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [extraContext, setExtraContext] = useState("")   // 👈 Nuevo estado
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
     }
   }, [messages])
 
+  // Cargar contexto.txt
+  useEffect(() => {
+    fetch("/contexto.txt")
+      .then((res) => res.text())
+      .then((data) => setExtraContext(data))
+      .catch((err) => console.error("Error cargando contexto.txt:", err))
+  }, [])
+
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
     const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
+    if (!API_KEY) throw new Error("API key no configurada")
 
-    if (!API_KEY) {
-      throw new Error("API key no configurada")
-    }
+    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
 
-    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
+${extraContext}
 
 Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
@@ -109,7 +112,6 @@ FORMATO DE RESPUESTA:
 - Si no sabes la respuesta, di "Lo siento, no tengo esa información."
 - Mantén un tono profesional, amable y servicial.
 - Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.`
-
 
     const contents = [
       {

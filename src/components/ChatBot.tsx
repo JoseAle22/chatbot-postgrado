@@ -5,7 +5,8 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft, Sparkles } from "lucide-react"
+import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft } from "lucide-react"
+import { chatStore } from "@/lib/chat-store"
 
 interface Message {
   id: string
@@ -20,81 +21,36 @@ interface ChatBotProps {
 }
 
 export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "¡Hola, soy UJAPITO! Tu asistente virtual de la Dirección de Postgrado UJAP. Puedo ayudarte con información sobre nuestros programas de Doctorado, Maestrías y Especializaciones, requisitos de admisión, contactos y más. ¿En qué puedo ayudarte hoy?",
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>(chatStore.getMessages())
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
+  const [extraContext, setExtraContext] = useState("")   // 👈 Nuevo estado para contexto.txt
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
-  }, [messages])
+    const unsubscribe = chatStore.subscribe((newMessages) => {
+      setMessages(newMessages)
+    })
+    return unsubscribe
+  }, [])
 
+  // Cargar contexto.txt al iniciar
   useEffect(() => {
-    if (typeof window === "undefined") return
-
-    // Configurar variables CSS para viewport dinámico (fallback para navegadores sin dvh)
-    const setViewportHeight = () => {
-      const vh = window.innerHeight * 0.01
-      document.documentElement.style.setProperty("--vh", `${vh}px`)
-    }
-
-    // Configurar al cargar
-    setViewportHeight()
-
-    // Actualizar en resize (incluye cambios de teclado)
-    const handleResize = () => {
-      setViewportHeight()
-    }
-
-    // Manejar focus del input para scroll suave
-    const handleFocus = () => {
-      if (inputRef.current && window.innerWidth < 768) {
-        setTimeout(() => {
-          inputRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          })
-        }, 300)
-      }
-    }
-
-    window.addEventListener("resize", handleResize)
-    window.addEventListener("orientationchange", handleResize)
-
-    const inputElement = inputRef.current
-    if (inputElement) {
-      inputElement.addEventListener("focus", handleFocus)
-    }
-
-    return () => {
-      window.removeEventListener("resize", handleResize)
-      window.removeEventListener("orientationchange", handleResize)
-      if (inputElement) {
-        inputElement.removeEventListener("focus", handleFocus)
-      }
-    }
+    fetch("/contexto.txt")
+      .then((res) => res.text())
+      .then((data) => setExtraContext(data))
+      .catch((err) => console.error("Error cargando contexto.txt:", err))
   }, [])
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
     const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
+    if (!API_KEY) throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
-    if (!API_KEY) {
-      throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
-    }
+    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
 
-    const systemPrompt = `Eres un asistente virtual LLAMADO Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
+${extraContext}
 
 Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
@@ -256,7 +212,7 @@ FORMATO DE RESPUESTA:
       content: input,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    chatStore.addMessage(userMessage)
     const currentInput = input
     setInput("")
     setIsLoading(true)
@@ -272,7 +228,7 @@ FORMATO DE RESPUESTA:
         content: cleanResponse(response),
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      chatStore.addMessage(assistantMessage)
       setApiStatus("working")
     } catch (error) {
       console.error("Error completo:", error)
@@ -305,7 +261,7 @@ FORMATO DE RESPUESTA:
         content: errorMessage,
         error: true,
       }
-      setMessages((prev) => [...prev, errorResponseMessage])
+      chatStore.addMessage(errorResponseMessage)
     } finally {
       setIsLoading(false)
     }
@@ -316,27 +272,6 @@ FORMATO DE RESPUESTA:
       onClose()
     } else {
       window.location.href = "/"
-    }
-  }
-
-  const testConnection = async () => {
-    setIsLoading(true)
-    try {
-      await callGeminiAPI("test", [])
-      setApiStatus("working")
-
-      const testMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content:
-          "✅ Conexión exitosa: La API de Gemini está funcionando correctamente. ¡Ya puedes hacer tus preguntas sobre los programas de postgrado UJAP!",
-      }
-      setMessages((prev) => [...prev, testMessage])
-    } catch (error) {
-      setApiStatus("error")
-      console.error("Test de conexión falló:", error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -371,42 +306,10 @@ FORMATO DE RESPUESTA:
                 <div className="text-lg md:text-xl font-bold tracking-tight">UJAPITO</div>
                 <div className="text-sm md:text-base opacity-90 font-medium">Dirección de Postgrado</div>
               </div>
-
-              {/* Status indicators - Hidden on mobile */}
-              <div className="hidden lg:flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/30">
-                  <Sparkles className="h-3 w-3 text-yellow-200" />
-                  <span className="text-xs font-medium">Powered by Gemini</span>
-                </div>
-                {apiStatus === "error" && (
-                  <div className="flex items-center gap-1 bg-red-500/20 backdrop-blur-sm px-2 py-1 rounded-full border border-red-300/30">
-                    <AlertCircle className="h-3 w-3 text-red-200" />
-                    <span className="text-xs">Error</span>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Right side - Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Test connection button */}
-              {apiStatus !== "working" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1.5 h-auto hidden md:flex transition-all duration-200 hover:scale-105"
-                  onClick={testConnection}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                  ) : (
-                    <AlertCircle className="h-3 w-3 mr-2" />
-                  )}
-                  <span className="text-xs font-medium">Probar</span>
-                </Button>
-              )}
-
               {/* Close/Back button */}
               <Button
                 variant="ghost"
