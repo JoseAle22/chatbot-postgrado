@@ -25,7 +25,7 @@ export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
     {
       id: "welcome",
       role: "assistant",
-      content: "¡Hola! Soy tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?",
+      content: "¡Hola, soy Ujapito! Tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?",
     },
   ])
   const [input, setInput] = useState("")
@@ -46,7 +46,7 @@ export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
       throw new Error("API key no configurada")
     }
 
-    const systemPrompt = `Eres un asistente virtual especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
+    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
 
 Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
@@ -224,7 +224,7 @@ FORMATO DE RESPUESTA:
         <CardTitle className="flex items-center justify-between text-xs sm:text-sm">
           <div className="flex items-center gap-1 sm:gap-2">
             <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span>Asistente UJAP</span>
+            <span>UJAPITO</span>
           </div>
           <div className="flex items-center gap-1">
             <Button

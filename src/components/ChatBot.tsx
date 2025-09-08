@@ -25,7 +25,7 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
       id: "welcome",
       role: "assistant",
       content:
-        "¡Hola! Soy tu asistente virtual de la Dirección de Postgrado UJAP. Puedo ayudarte con información sobre nuestros programas de Doctorado, Maestrías y Especializaciones, requisitos de admisión, contactos y más. ¿En qué puedo ayudarte hoy?",
+        "¡Hola, soy UJAPITO! Tu asistente virtual de la Dirección de Postgrado UJAP. Puedo ayudarte con información sobre nuestros programas de Doctorado, Maestrías y Especializaciones, requisitos de admisión, contactos y más. ¿En qué puedo ayudarte hoy?",
     },
   ])
   const [input, setInput] = useState("")
@@ -94,7 +94,7 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
       throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
     }
 
-    const systemPrompt = `Eres un asistente virtual especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
+    const systemPrompt = `Eres un asistente virtual LLAMADO Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP). 
 
 Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
@@ -368,7 +368,7 @@ FORMATO DE RESPUESTA:
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="text-lg md:text-xl font-bold tracking-tight">Asistente UJAP</div>
+                <div className="text-lg md:text-xl font-bold tracking-tight">UJAPITO</div>
                 <div className="text-sm md:text-base opacity-90 font-medium">Dirección de Postgrado</div>
               </div>
 
