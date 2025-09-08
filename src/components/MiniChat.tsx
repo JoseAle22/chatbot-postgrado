@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
+import { chatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,9 +22,14 @@ interface MiniChatProps {
 }
 
 export default function MiniChat({ onExpand, onClose }: MiniChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "welcome", role: "assistant", content: "¡Hola, soy Ujapito! Tu asistente de Postgrado UJAP. ¿En qué puedo ayudarte?" },
-  ])
+  const [messages, setMessages] = useState<Message[]>(chatStore.getMessages())
+  // Suscribirse a cambios en chatStore
+  useEffect(() => {
+    const unsubscribe = chatStore.subscribe((newMessages) => {
+      setMessages(newMessages)
+    })
+    return unsubscribe
+  }, [])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [extraContext, setExtraContext] = useState("")   // 👈 Nuevo estado
@@ -190,7 +196,7 @@ FORMATO DE RESPUESTA:
       content: input,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+  chatStore.addMessage(userMessage)
     const currentInput = input
     setInput("")
     setIsLoading(true)
@@ -204,7 +210,7 @@ FORMATO DE RESPUESTA:
         content: cleanResponse(response),
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+  chatStore.addMessage(assistantMessage)
     } catch (error) {
       console.error("Error:", error)
 
@@ -214,7 +220,7 @@ FORMATO DE RESPUESTA:
         content: "Error temporal. Intenta expandir el chat para más opciones o contacta: +582418710903",
         error: true,
       }
-      setMessages((prev) => [...prev, errorMessage])
+  chatStore.addMessage(errorMessage)
     } finally {
       setIsLoading(false)
     }
