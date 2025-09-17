@@ -571,14 +571,7 @@ FORMATO DE RESPUESTA:
             {/* Right side - Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Close/Back button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-full h-9 w-9 p-0 transition-all duration-200 hover:scale-105"
-                onClick={handleGoBack}
-              >
-                {isModal ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-              </Button>
+
             </div>
           </div>
         </div>
@@ -631,13 +624,6 @@ FORMATO DE RESPUESTA:
 
                   {message.showButtons === "initial" && (
                     <div className="flex flex-col gap-2 max-w-sm">
-                      <Button
-                        onClick={() => handleInitialResponse("yes")}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white justify-start"
-                        size="sm"
-                      >
-                        ✅ Sí, puedes ayudarme
-                      </Button>
                       <Button
                         onClick={() => handleInitialResponse("programs")}
                         className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white justify-start"
