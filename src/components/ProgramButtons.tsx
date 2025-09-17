@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 // SVG Icon Components
 const ChevronDown = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7 7 7 7-7" />
   </svg>
 )
 
@@ -106,7 +106,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "4 años",
     modality: "Semipresencial",
     icon: "🎓",
-    image: "/images/cienciaseducacion.webp",
+    image: "/placeholder-hfix5.png",
   },
   {
     id: "orientacion",
@@ -124,7 +124,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "4 años",
     modality: "Semipresencial",
     icon: "🧭",
-    image: "/images/cienciasorientiacion.webp",
+    image: "/placeholder-m9ja4.png",
   },
   {
     id: "gerencia-comunicacion",
@@ -191,7 +191,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏢",
-    image: "/images/especialicacionempresas.webp",
+    image: "/placeholder-o52rl.png",
   },
   {
     id: "automatizacion-industrial",
@@ -204,7 +204,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Presencial",
     icon: "⚙️",
-    image: "/images/especializacionmaquinas.webp",
+    image: "/placeholder-qbefq.png",
   },
   {
     id: "derecho-administrativo",
@@ -230,7 +230,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "📋",
-    image: "/images/derechoprocesal.webp",
+    image: "/placeholder-10rdl.png",
   },
   {
     id: "docencia-superior",
@@ -243,7 +243,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "👨‍🏫",
-    image: "/images/docencia.webp",
+    image: "/placeholder-f0vtx.png",
   },
   {
     id: "control-calidad",
@@ -256,7 +256,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏗️",
-    image: "/images/controldecalidad.webp",
+    image: "/placeholder-gpfyw.png",
   },
   {
     id: "gestion-aduanera",
@@ -280,7 +280,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏛️",
-    image: "/images/finanzas.webp",
+    image: "/placeholder-pxhdl.png",
   },
   {
     id: "telecomunicaciones",
@@ -293,7 +293,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "📡",
-    image: "/images/telecom.webp",
+    image: "/placeholder-jh8yf.png",
   },
 ]
 
@@ -337,10 +337,12 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
               className="w-full p-4 h-auto justify-between hover:bg-amber-50 rounded-lg"
               onClick={() => toggleProgram(program.id)}
             >
-              <div className="flex items-center gap-3 text-left">
-                <div className="text-2xl">{program.icon}</div>
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-800 text-sm leading-tight">{program.name}</div>
+              <div className="flex items-center gap-3 text-left flex-1 min-w-0">
+                <div className="text-2xl flex-shrink-0">{program.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-800 text-sm leading-tight break-words pr-2">
+                    {program.name}
+                  </div>
                   <div
                     className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 border ${getTypeColor(program.type)}`}
                   >
@@ -348,11 +350,13 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
                   </div>
                 </div>
               </div>
-              {expandedProgram === program.id ? (
-                <ChevronDown className="h-5 w-5 text-gray-500" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-gray-500" />
-              )}
+              <div className="flex-shrink-0 ml-2">
+                {expandedProgram === program.id ? (
+                  <ChevronDown className="h-5 w-5 text-gray-500" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-500" />
+                )}
+              </div>
             </Button>
 
             {/* Expanded Content */}
@@ -405,21 +409,21 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-200">
                     <Button
                       size="sm"
-                      className="bg-amber-600 hover:bg-amber-700 text-white flex-1"
+                      className="bg-amber-600 hover:bg-amber-700 text-white flex-1 text-xs sm:text-sm"
                       onClick={() => onProgramSelect(program)}
                     >
-                      <GraduationCap className="h-4 w-4 mr-2" />
+                      <GraduationCap className="h-4 w-4 mr-1 sm:mr-2" />
                       Más información
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
+                      className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent flex-1 text-xs sm:text-sm"
                     >
-                      <Phone className="h-4 w-4 mr-2" />
+                      <Phone className="h-4 w-4 mr-1 sm:mr-2" />
                       Contactar
                     </Button>
                   </div>
@@ -435,13 +439,13 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
         <CardContent className="p-4">
           <div className="text-center">
             <h4 className="font-semibold text-amber-800 mb-2">¿Necesitas más información?</h4>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center items-center text-sm text-amber-700">
-              <div className="flex items-center gap-1">
-                <Mail className="h-4 w-4" />
+            <div className="flex flex-col gap-2 justify-center items-center text-xs sm:text-sm text-amber-700">
+              <div className="flex items-center gap-1 break-all">
+                <Mail className="h-4 w-4 flex-shrink-0" />
                 <span>coordinacion.postgrado@ujap.edu.ve</span>
               </div>
               <div className="flex items-center gap-1">
-                <Phone className="h-4 w-4" />
+                <Phone className="h-4 w-4 flex-shrink-0" />
                 <span>+58 241 871 0903</span>
               </div>
             </div>

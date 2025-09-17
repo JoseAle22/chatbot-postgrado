@@ -33,8 +33,7 @@ export default function ChatModal({ onClose }: ChatModalProps) {
           <X className="h-5 w-5" />
         </Button>
 
-        {/* ChatBot component */}
-        <div className="h-full md:rounded-2xl overflow-hidden shadow-2xl">
+        <div className="h-screen-safe md:h-auto md:rounded-2xl overflow-hidden shadow-2xl">
           <ChatBot isModal={true} onClose={onClose} />
         </div>
       </div>
