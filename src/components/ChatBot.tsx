@@ -124,7 +124,7 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
   const [extraContext, setExtraContext] = useState("")
-  const [chatState, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
+  const [, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
