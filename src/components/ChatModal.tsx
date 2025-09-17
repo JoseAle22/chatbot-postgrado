@@ -33,9 +33,11 @@ export default function ChatModal({ onClose }: ChatModalProps) {
         "
         style={{
           width: "100vw",
-          height: "100dvh",
+          height: "100vh", // <-- usa vh en vez de dvh
           maxWidth: "100vw",
-          maxHeight: "100dvh",
+          maxHeight: "100vh", // <-- usa vh en vez de dvh
+          background: "#fff", // <-- asegúrate de fondo blanco
+          zIndex: 100, // <-- asegúrate que esté por encima
         }}
       >
         {/* Close button - Solo visible en desktop */}
@@ -48,7 +50,7 @@ export default function ChatModal({ onClose }: ChatModalProps) {
           <X className="h-5 w-5" />
         </Button>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto bg-white">
           <ChatBot isModal={true} onClose={onClose} />
         </div>
       </div>
