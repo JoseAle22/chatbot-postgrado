@@ -22,7 +22,22 @@ export default function ChatModal({ onClose }: ChatModalProps) {
         onClick={onClose}
       />
 
-      <div className="relative w-full h-full md:w-auto md:h-auto md:max-w-7xl md:max-h-[90vh] md:m-4 animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-8 fade-in duration-500 ease-out">
+      <div
+        className="
+          relative
+          w-full h-full max-w-none max-h-none
+          sm:w-80 sm:h-96
+          md:w-auto md:h-auto md:max-w-7xl md:max-h-[90vh] md:m-4
+          animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-8 fade-in duration-500 ease-out
+          flex flex-col shadow-2xl border-amber-200 bg-white rounded-lg
+        "
+        style={{
+          width: "100vw",
+          height: "100dvh",
+          maxWidth: "100vw",
+          maxHeight: "100dvh",
+        }}
+      >
         {/* Close button - Solo visible en desktop */}
         <Button
           onClick={onClose}
@@ -33,7 +48,7 @@ export default function ChatModal({ onClose }: ChatModalProps) {
           <X className="h-5 w-5" />
         </Button>
 
-        <div className="h-screen-safe md:h-auto md:rounded-2xl overflow-hidden shadow-2xl">
+        <div className="flex-1 overflow-hidden">
           <ChatBot isModal={true} onClose={onClose} />
         </div>
       </div>
