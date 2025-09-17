@@ -5,14 +5,112 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, AlertCircle, X, ArrowLeft } from "lucide-react"
-import { chatStore } from "@/lib/chat-store"
+import ProgramButtons from "./ProgramButtons"
+
+// SVG Icon Components
+const Send = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m5 12 7-7 7 7M12 5v14" />
+  </svg>
+)
+
+const Bot = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    />
+  </svg>
+)
+
+const User = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+    />
+  </svg>
+)
+
+const Loader2 = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
+  </svg>
+)
+
+const AlertCircle = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z"
+    />
+  </svg>
+)
+
+const X = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
+const ArrowLeft = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+)
+
+const Stethoscope = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l6 6 6-6z"
+    />
+  </svg>
+)
+
+const BookOpen = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+    />
+  </svg>
+)
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
   error?: boolean
+  showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
+}
+
+interface Program {
+  id: string
+  name: string
+  type: "doctorado" | "maestria" | "especializacion"
+  coordinator: string
+  description: string
+  requirements: string[]
+  duration: string
+  modality: string
+  icon: string
+  image?: string
 }
 
 interface ChatBotProps {
@@ -21,20 +119,31 @@ interface ChatBotProps {
 }
 
 export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
-  const [messages, setMessages] = useState<Message[]>(chatStore.getMessages())
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
-  const [extraContext, setExtraContext] = useState("")   // 👈 Nuevo estado para contexto.txt
+  const [extraContext, setExtraContext] = useState("")
+  const [chatState, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const unsubscribe = chatStore.subscribe((newMessages) => {
-      setMessages(newMessages)
-    })
-    return unsubscribe
+    const initialMessage: Message = {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. ¿En qué puedo ayudarte hoy?",
+      showButtons: "initial",
+    }
+    setMessages([initialMessage])
   }, [])
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+    }
+  }, [messages])
 
   // Cargar contexto.txt al iniciar
   useEffect(() => {
@@ -44,9 +153,104 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
       .catch((err) => console.error("Error cargando contexto.txt:", err))
   }, [])
 
+  const handleInitialResponse = (response: "yes" | "programs" | "other") => {
+    let userMessage: Message
+    let assistantMessage: Message
+
+    if (response === "yes" || response === "programs") {
+      userMessage = {
+        id: Date.now().toString(),
+        role: "user",
+        content: response === "yes" ? "Sí, puedes ayudarme" : "Quiero información sobre programas",
+      }
+
+      assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
+        showButtons: "program-type",
+      }
+      setChatState("program-selection")
+    } else {
+      userMessage = {
+        id: Date.now().toString(),
+        role: "user",
+        content: "Tengo otra consulta",
+      }
+
+      assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content:
+          "¡Por supuesto! Puedes escribir tu pregunta y te ayudaré con cualquier información sobre la Dirección de Postgrado UJAP.",
+      }
+      setChatState("conversation")
+    }
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
+  }
+
+  const handleProgramTypeSelection = (type: "clinicos" | "no-clinicos") => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: `Programas ${type}`,
+    }
+
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: `Aquí tienes nuestros programas ${type}. Puedes expandir cada uno para ver información detallada:`,
+      showButtons: type === "clinicos" ? "programs-clinicos" : "programs-no-clinicos",
+    }
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
+    setChatState("conversation")
+  }
+
+  const handleProgramSelect = (program: Program) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: `Más información sobre ${program.name}`,
+    }
+
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: `Excelente elección. El ${program.name} es coordinado por ${program.coordinator}. 
+
+INFORMACIÓN DETALLADA:
+${program.description}
+
+DURACIÓN: ${program.duration}
+MODALIDAD: ${program.modality}
+
+REQUISITOS PRINCIPALES:
+${program.requirements.map((req, index) => `${index + 1}. ${req}`).join("\n")}
+
+DOCUMENTOS NECESARIOS:
+1. Dos (2) fotografías tamaño carnet
+2. Copia de cédula ampliada al 150%
+3. Fondo Negro certificado del título de pregrado
+4. Notas certificadas de pregrado
+5. Curriculum Vitae con documentos probatorios
+6. Comprobante de pago del arancel
+
+CONTACTO DIRECTO:
+📧 coordinacion.postgrado@ujap.edu.ve
+📞 +58 241 871 0903
+
+¿Te gustaría conocer más detalles sobre algún aspecto específico del programa?`,
+    }
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
+  }
+
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
     const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
-    if (!API_KEY) throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
+    if (!API_KEY)
+      throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
     const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
 
@@ -61,8 +265,8 @@ PROGRAMAS ACADÉMICOS:
 
 INFORMACIÓN DE CONTACTO:
 - Email: coordinacion.postgrado@ujap.edu.ve
-- Teléfono: +58 02418710903
-- UJAP General: +58 02418714240 ext. 1260
+- Teléfono: +58 241 871 0903
+- UJAP General: +58 241 871 4240 ext. 1260
 - Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo
 - Instagram: @ujap_oficial
 
@@ -83,7 +287,7 @@ INFORMACIÓN INSTITUCIONAL:
 - Promueve la excelencia, innovación e internacionalización.
 
 DOCUMENTOS Y REQUISITOS:
-- Dos (2) fotografias tamaño carnet.
+- Dos (2) fotografías tamaño carnet.
 - Copia de la cédula de identidad ampliada al 150%.
 - Fondo Negro certificado del titulo de pregrado.
 - Notas certificadas de las calificaciones obtenidas en los estudios de pregrado.
@@ -202,6 +406,49 @@ FORMATO DE RESPUESTA:
       .trim()
   }
 
+  const detectProgramIntent = (message: string): boolean => {
+    const programKeywords = [
+      "programa",
+      "programas",
+      "postgrado",
+      "postgrados",
+      "posgrado",
+      "posgrados",
+      "especialización",
+      "especializacion",
+      "especializaciones",
+      "especializacion",
+      "maestría",
+      "maestria",
+      "maestrias",
+      "maestrías",
+      "doctorado",
+      "doctorados",
+      "phd",
+      "carrera",
+      "carreras",
+      "estudio",
+      "estudios",
+      "oferta",
+      "ofertas",
+      "académico",
+      "academico",
+      "académicos",
+      "academicos",
+      "clínico",
+      "clinico",
+      "clínicos",
+      "clinicos",
+      "no clínico",
+      "no clinico",
+      "no clínicos",
+      "no clinicos",
+    ]
+
+    const lowerMessage = message.toLowerCase()
+    return programKeywords.some((keyword) => lowerMessage.includes(keyword))
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
@@ -212,12 +459,25 @@ FORMATO DE RESPUESTA:
       content: input,
     }
 
-    chatStore.addMessage(userMessage)
+    setMessages((prev) => [...prev, userMessage])
     const currentInput = input
     setInput("")
     setIsLoading(true)
 
     try {
+      if (detectProgramIntent(currentInput)) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
+          showButtons: "program-type",
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+        setChatState("program-selection")
+        setIsLoading(false)
+        return
+      }
+
       console.log("Enviando mensaje a Gemini:", currentInput)
 
       const response = await callGeminiAPI(currentInput, messages)
@@ -228,7 +488,7 @@ FORMATO DE RESPUESTA:
         content: cleanResponse(response),
       }
 
-      chatStore.addMessage(assistantMessage)
+      setMessages((prev) => [...prev, assistantMessage])
       setApiStatus("working")
     } catch (error) {
       console.error("Error completo:", error)
@@ -261,7 +521,7 @@ FORMATO DE RESPUESTA:
         content: errorMessage,
         error: true,
       }
-      chatStore.addMessage(errorResponseMessage)
+      setMessages((prev) => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
     }
@@ -277,11 +537,11 @@ FORMATO DE RESPUESTA:
 
   const containerClass = isModal
     ? "h-full md:h-auto flex items-center justify-center p-0 md:p-0"
-    : "min-h-screen-safe bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4"
+    : "min-h-screen-safe bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4 md:p-6 rounded-2xl backdrop-blur-sm"
 
   return (
     <div className={containerClass}>
-      <div className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl backdrop-blur-sm">
+      <div className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl">
         {/* Header - Professional Design */}
         <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden flex-shrink-0">
           {/* Background pattern */}
@@ -343,11 +603,7 @@ FORMATO DE RESPUESTA:
                 {message.role === "assistant" && (
                   <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
                     <AvatarFallback
-                      className={`${
-                        message.error
-                          ? "bg-gradient-to-br from-red-100 to-red-200 text-red-700"
-                          : "bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700"
-                      }`}
+                      className={`${message.error ? "bg-gradient-to-br from-red-100 to-red-200 text-red-700" : "bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700"}`}
                     >
                       {message.error ? (
                         <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
@@ -358,18 +614,76 @@ FORMATO DE RESPUESTA:
                   </Avatar>
                 )}
 
-                <div
-                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-lg backdrop-blur-sm transition-all duration-200 hover:shadow-xl ${
-                    message.role === "user"
-                      ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white ml-auto"
-                      : message.error
-                        ? "bg-gradient-to-br from-red-50 to-red-100 text-red-900 border border-red-200/50"
-                        : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
-                  }`}
-                >
-                  <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words font-medium">
-                    {message.content}
-                  </p>
+                <div className="max-w-[85%] md:max-w-[75%] flex flex-col gap-3">
+                  <div
+                    className={`rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-lg backdrop-blur-sm transition-all duration-200 hover:shadow-xl ${
+                      message.role === "user"
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white ml-auto"
+                        : message.error
+                          ? "bg-gradient-to-br from-red-50 to-red-100 text-red-900 border border-red-200/50"
+                          : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
+                    }`}
+                  >
+                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words font-medium">
+                      {message.content}
+                    </p>
+                  </div>
+
+                  {message.showButtons === "initial" && (
+                    <div className="flex flex-col gap-2 max-w-sm">
+                      <Button
+                        onClick={() => handleInitialResponse("yes")}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white justify-start"
+                        size="sm"
+                      >
+                        ✅ Sí, puedes ayudarme
+                      </Button>
+                      <Button
+                        onClick={() => handleInitialResponse("programs")}
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white justify-start"
+                        size="sm"
+                      >
+                        🎓 Información sobre programas
+                      </Button>
+                      <Button
+                        onClick={() => handleInitialResponse("other")}
+                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
+                        size="sm"
+                      >
+                        💬 Tengo otra consulta
+                      </Button>
+                    </div>
+                  )}
+
+                  {message.showButtons === "program-type" && (
+                    <div className="flex flex-col gap-2 max-w-sm">
+                      <Button
+                        onClick={() => handleProgramTypeSelection("clinicos")}
+                        className="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white justify-start"
+                        size="sm"
+                      >
+                        <Stethoscope className="h-4 w-4 mr-2" />
+                        Programas Clínicos
+                      </Button>
+                      <Button
+                        onClick={() => handleProgramTypeSelection("no-clinicos")}
+                        className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white justify-start"
+                        size="sm"
+                      >
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Programas No Clínicos
+                      </Button>
+                    </div>
+                  )}
+
+                  {(message.showButtons === "programs-clinicos" || message.showButtons === "programs-no-clinicos") && (
+                    <div className="w-full">
+                      <ProgramButtons
+                        programType={message.showButtons === "programs-clinicos" ? "clinicos" : "no-clinicos"}
+                        onProgramSelect={handleProgramSelect}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {message.role === "user" && (
@@ -410,7 +724,7 @@ FORMATO DE RESPUESTA:
           </div>
         </div>
 
-        <div className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 rounded-b-none md:rounded-b-2xl flex-shrink-0">
+        <div className="border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6 flex-shrink-0">
           <form onSubmit={handleSubmit} className="flex w-full gap-3">
             <div className="flex-1 relative">
               <Input

@@ -1,8 +1,13 @@
 "use client"
 
-import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ChatBot from "./ChatBot"
+
+const X = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
 
 interface ChatModalProps {
   onClose: () => void
@@ -17,8 +22,7 @@ export default function ChatModal({ onClose }: ChatModalProps) {
         onClick={onClose}
       />
 
-      {/* Responsive modal container with animations */}
-      <div className="relative w-full h-full md:w-auto md:h-auto md:max-w-5xl md:max-h-[85vh] md:m-6 animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-8 fade-in duration-500 ease-out">
+      <div className="relative w-full h-full md:w-auto md:h-auto md:max-w-7xl md:max-h-[90vh] md:m-4 animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-8 fade-in duration-500 ease-out">
         {/* Close button - Solo visible en desktop */}
         <Button
           onClick={onClose}

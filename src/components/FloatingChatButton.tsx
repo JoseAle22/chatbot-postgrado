@@ -15,7 +15,7 @@ export default function FloatingChatButton() {
     if (window.innerWidth < 768) {
       setShowModal(true)
     } else {
-      setShowMiniChat(true)
+      setShowModal(true)
     }
   }
 
@@ -52,7 +52,7 @@ export default function FloatingChatButton() {
             className="h-20 w-20 sm:h-24 sm:w-24 bg-transparent hover:bg-transparent transition-all duration-300 group p-0 border-0 outline-none focus:outline-none animate-bounce hover:animate-none"
           >
             <img
-              src="/images/avatar.png?height=80&width=80"
+              src="/images/avatar.webp?height=80&width=80"
               alt="UJAP Assistant"
               className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-125 animate-pulse group-hover:animate-none"
             />
