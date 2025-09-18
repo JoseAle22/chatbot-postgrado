@@ -27,3 +27,55 @@ La duración del Programa es de cuatro (4) años, en correspondencia con lo señ
 
 Evaluación
 La evaluación en el curso introductorio se hará en función de la asistencia, intervenciones, trabajos individuales y grupales. Se concibe la evaluación de las asignaturas de la Maestría, como un sistema que incluye auto y coevaluación, además de evaluación continua por parte del facilitador. Se realizará aplicando la escala numeral entera comprendida entre cero y veinte puntos.
+
+ESTRUCTURA DEL CURSO
+PLAN DE ESTUDIOS
+El plan de estudios está constituido por:
+
+Curso Introductorio:
+Tecnologías Informaticas en entornos virtuales
+
+24 Horas
+
+Trimestre I
+- Didáctica basada en procesos del pensamiento.
+- Educación y ética para la sustentabilidad
+- Seminario I
+U.C
+3
+3
+3
+
+Trimestre II
+-Sistemas ambientales complejos
+-Problemas ambientales, procesos contaminantes y energias
+alternas
+U.C
+3
+3
+
+Trimestre III
+- Evaluación Neuro-dinámica del aprendizaje
+- Gestión ambiental sustentable
+- Seminario II
+U.C
+3
+3
+3
+
+Trimestre IV
+Optativa de Profundización I
+Optativa de Profundización II
+U.C
+3
+3
+
+Trimestre V
+Optativa de Profundizacion III 
+Seminario III
+U.C
+3
+3
+
+-Total Créditos
+36

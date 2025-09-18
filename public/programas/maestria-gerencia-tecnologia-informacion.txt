@@ -30,3 +30,66 @@ Los estudios de Postgrado de la Maestría se llevarán a cabo por el régimen de
 
 Evaluación
 La evaluación en el curso introductorio se hará en función de las asistencias, intervenciones, trabajos individuales y grupales. Se concibe la evaluación de las asignaturas de la Maestría como un sistema que incluye auto y coevaluación, además de evaluación continua por parte del facilitador. Se realizará aplicando la escala numeral entera comprendida entre cero y veinte puntos.
+
+PLAN DE ESTUDIOS
+CU-209-13-05-04
+* CURSO INTRODUCTORIO
+• Gerencia de la Información y el Conocimiento
+• La Información y Globalización
+• Gerencia-Talento Humano
+• Gerencia y Seguridad de los Sistemas de Información 
+•Uso de Entornos Virtuales. Acrópolis UJAP (I)
+•Uso de Entornos Virtuales. Acrópolis (lI)
+horas:
+8
+8
+8
+8
+8
+8
+Horas Total: 48
+ASIGNATURAS
+Primer trimestre.
+• Teoria y Epistemología de la Información
+ Gerencia y Planificación Estratégica: Proyectos
+UC:
+3
+3
+
+Segundo trimestre.
+• Gerencia y Tecnología de la Información
+· Herramientas de Automatización
+UC:
+3
+3
+
+Tercer trimestre.
+• Gerencia, Comercialización y Análisis de la Información
+• Recuperación de la Información y Gestión Documental
+en Entornos Electrónicos
+UC:
+3
+3
+
+Cuarto trimestre.
+· Redes y Publicaciones Electrónicas, Servicios y Recursos
+de Información
+• Gerencia y Organización de un Servicio de Información 
+UC:
+3
+3
+
+Quinto trimestre.
+· Seminario de Investigación en Informacion
+• Métodos Cuantitativos y Analisis de los Trabajos Cientificos
+UC:
+3
+3
+
+Sexto Trimestre
+Seminario sobre Trabajo de Grado
+UC:
+3
+
+TOTAL: 31 UC.
+* Sujeto a modificaciones en cuanto al contenido
