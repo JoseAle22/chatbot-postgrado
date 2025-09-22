@@ -208,43 +208,73 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     setChatState("conversation")
   }
 
-  const handleProgramSelect = (program: Program) => {
+  const handleProgramSelect = async (program: Program) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: `Más información sobre ${program.name}`,
     }
-
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: `Excelente elección. El ${program.name} es coordinado por ${program.coordinator}. 
-
-INFORMACIÓN DETALLADA:
-${program.description}
-
-DURACIÓN: ${program.duration}
-MODALIDAD: ${program.modality}
-
-REQUISITOS PRINCIPALES:
-${program.requirements.map((req, index) => `${index + 1}. ${req}`).join("\n")}
-
-DOCUMENTOS NECESARIOS:
-1. Dos (2) fotografías tamaño carnet
-2. Copia de cédula ampliada al 150%
-3. Fondo Negro certificado del título de pregrado
-4. Notas certificadas de pregrado
-5. Curriculum Vitae con documentos probatorios
-6. Comprobante de pago del arancel
-
-CONTACTO DIRECTO:
-📧 coordinacion.postgrado@ujap.edu.ve
-📞 +58 241 871 0903
-
-¿Te gustaría conocer más detalles sobre algún aspecto específico del programa?`,
+    setMessages((prev) => [...prev, userMessage])
+    setIsLoading(true)
+    try {
+      // Forzar uso del .txt correcto
+      const response = await callGeminiAPI(userMessage.content, [...messages, userMessage])
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: cleanResponse(response),
+      }
+      setMessages((prev) => [...prev, assistantMessage])
+      setApiStatus("working")
+    } catch (error) {
+      setApiStatus("error")
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: error instanceof Error ? error.message : "Error desconocido",
+        error: true,
+      }])
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage])
+  // Detecta si la pregunta menciona un programa y retorna el nombre de archivo .txt correspondiente
+  // Detección flexible de programa en mensaje
+  // Fuzzy matching simple para detectar programas aunque el usuario escriba con errores o variantes
+  const detectProgramFileFromMessage = (message) => {
+    const programas = [
+      { name: ["ciencias de la educacion", "doctorado en ciencias de la educacion", "educacion", "doctorado educacion"], file: "doctorado-ciencias-de-la-educacion.txt" },
+      { name: ["orientacion", "doctorado en orientacion", "orientacion educativa", "doctorado orientacion"], file: "doctorado-orientacion.txt" },
+      { name: ["gerencia de la comunicacion organizacional", "maestria en gerencia de la comunicacion organizacional", "comunicacion organizacional", "gerencia comunicacion"], file: "maestria-gerencia-de-la-comunicacion-organizacional.txt" },
+      { name: ["gerencia y tecnologia de la informacion", "maestria en gerencia y tecnologia de la informacion", "tecnologia de la informacion", "gerencia tecnologia"], file: "maestria-gerencia-y-tecnologia-de-la-informacion.txt" },
+      { name: ["educacion para el desarrollo sustentable", "maestria en educacion para el desarrollo sustentable", "desarrollo sustentable", "educacion sustentable"], file: "maestria-educacion-para-el-desarrollo-sustentable.txt" },
+      { name: ["administracion de empresas", "especializacion en administracion de empresas", "admin empresas", "administracion empresas"], file: "especializacion-administracion-de-empresas.txt" },
+      { name: ["automatizacion industrial", "especializacion en automatizacion industrial", "automatizacion"], file: "especializacion-automatizacion-industrial.txt" },
+      { name: ["derecho administrativo", "especializacion en derecho administrativo", "derecho admin"], file: "especializacion-derecho-administrativo.txt" },
+      { name: ["derecho procesal civil", "especializacion en derecho procesal civil", "procesal civil", "derecho procesal"], file: "especializacion-derecho-procesal-civil.txt" },
+      { name: ["docencia en educacion superior", "especializacion en docencia en educacion superior", "docencia superior", "educacion superior"], file: "especializacion-docencia-en-educacion-superior.txt" },
+      { name: ["gerencia de control de calidad e inspeccion de obras", "especializacion en gerencia de control de calidad e inspeccion de obras", "control de calidad", "gerencia calidad"], file: "especializacion-gerencia-de-control-de-calidad-e-inspeccion-de-obras.txt" },
+      { name: ["gestion aduanera y tributaria", "especializacion en gestion aduanera y tributaria", "aduanera tributaria", "gestion aduanera", "gestion tributaria"], file: "especializacion-gestion-aduanera-y-tributaria.txt" },
+      { name: ["gestion y control de las finanzas publicas", "especializacion en gestion y control de las finanzas publicas", "finanzas publicas", "gestion finanzas"], file: "especializacion-gestion-y-control-de-las-finanzas-publicas.txt" },
+      { name: ["telecomunicaciones", "especializacion en telecomunicaciones", "telecom", "telecomunicacion"], file: "especializacion-telecomunicaciones.txt" },
+    ];
+    // Normalizar mensaje
+    const normalized = message.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    // Fuzzy: buscar coincidencia parcial (>=70% de palabras del nombre)
+    for (const prog of programas) {
+      for (const variant of prog.name) {
+        const words = variant.split(" ");
+        let matchCount = 0;
+        for (const w of words) {
+          if (normalized.includes(w)) matchCount++;
+        }
+        if (matchCount / words.length >= 0.7 || normalized.includes(variant)) {
+          return prog.file;
+        }
+      }
+    }
+    return null;
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
@@ -252,71 +282,28 @@ CONTACTO DIRECTO:
     if (!API_KEY)
       throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
+    // Detectar si la pregunta es sobre un programa específico
+    let contextToUse = extraContext;
+    const programFile = detectProgramFileFromMessage(userMessage);
+    if (programFile) {
+      try {
+        const res = await fetch(`/programas/${programFile}`);
+        if (res.ok) {
+          contextToUse = await res.text();
+        }
+      } catch {}
+    }
+
     const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
 
-${extraContext}
+CONTEXTUALIZA Y RESPONDE SOLO CON LA SIGUIENTE INFORMACIÓN DEL PROGRAMA:
+----------------------
+${contextToUse}
+----------------------
 
-Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
+Responde únicamente usando la información proporcionada arriba. Si la respuesta no está de forma literal, busca la información más relevante o relacionada dentro del contexto. Si no encuentras nada relacionado, responde exactamente: "No tengo esa información en el contexto proporcionado.". No inventes ni agregues información externa.
 
-PROGRAMAS ACADÉMICOS:
-- Doctorados: Ciencias de la Educación, Orientación
-- Maestrías: Gerencia de la Comunicación Organizacional, Gerencia y Tecnología de la Información, Educación para el Desarrollo Sustentable
-- Especializaciones: Administración de Empresas, Automatización Industrial, Derecho Administrativo, Derecho Procesal Civil, Docencia en Educación Superior, Gerencia de Control de Calidad e Inspección de Obras, Gestión Aduanera y Tributaria, Gestión y Control de las Finanzas Públicas, Telecomunicaciones
-
-INFORMACIÓN DE CONTACTO:
-- Email: coordinacion.postgrado@ujap.edu.ve
-- Teléfono: +58 241 871 0903
-- UJAP General: +58 241 871 4240 ext. 1260
-- Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo
-- Instagram: @ujap_oficial
-
-AUTORIDADES:
-- Directora General: Dra. Haydee Páez (también Coordinadora del Doctorado en Ciencias de la Educación)
-- Dra. Omaira Lessire de González: Coordinadora del Doctorado en Orientación
-- Dra. Thania Oberto: Coordinadora de Maestría en Gerencia de la Comunicación Organizacional y varias especializaciones
-- MSc. Wilmer Sanz: Coordinador de Especialización en Automatización Industrial
-- MSc. Susan León: Coordinadora de Maestría en Gerencia y Tecnología de la Información y Especialización en Docencia
-- MSc. Ledys Herrera: Coordinadora de Especialización en Derecho Procesal Civil
-- Esp. Federico Estaba: Coordinador de Especialización en Gestión y Control de las Finanzas Públicas
-- Esp. Adriana Materán: Coordinadora de Especialización en Odontopediatría
-
-INFORMACIÓN INSTITUCIONAL:
-- La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela
-- Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario
-- Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales
-- Promueve la excelencia, innovación e internacionalización.
-
-DOCUMENTOS Y REQUISITOS:
-- Dos (2) fotografías tamaño carnet.
-- Copia de la cédula de identidad ampliada al 150%.
-- Fondo Negro certificado del titulo de pregrado.
-- Notas certificadas de las calificaciones obtenidas en los estudios de pregrado.
-- Curriculum Vitae con documentos probatorios para la aplicacion del Baremo.
-- Comprobante de pago del arancel de admision.
-- En el doctorado adicionalmente debera consignar: fondo negro del titulo de magister certificado, dos referencias academicas, propuesta del tema de Tesis Doctoral y presentar una entrevista.
-
-Esos Documentos deben ser consignados en la oficina de Control de Estudios en el respectivo sobre de inscripcion (se adquiere en el centro de copiado).
-
-MODALIDADES DE PAGO:
-Cuentas Autorizadas para los pagos:
-Cuentas corrientes a nombre de: Sociedad Civil Universidad José Antonio Páez, RIF: J-30400858-9.
-
-Banco Nacional de Credito 0191-0085-50-2185041363
-Banco Banesco 0134-0025-34-0251066811
-Banco Provincial 0108-0082-08-0100003985
-Banco de Venezuela 0102-0114-48-0001031353
-Banco Nacional de Crédito(Dolares) 0191-0127-43-2300010599
-Banco Nacional de Crédito(Euros) 0191-0127-44-2400000188
-
-FORMATO DE RESPUESTA:
-- Responde siempre en texto claro y ordenado.
-- No uses asteriscos (*), guiones (-) ni símbolos innecesarios.
-- Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.
-- Separa las secciones con títulos en mayúsculas.
-- No uses Markdown ni código.
-- Si no sabes la respuesta, di "Lo siento, no tengo esa información."
-- Mantén un tono profesional, amable y servicial.
-- Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.`
+Si el usuario pide información sobre un curso o programa, responde de forma clara, ordenada y comprensible para humanos, aunque el nombre no sea exacto. Resume y organiza la información relevante del contexto, evitando repetir lo que ya se muestra en los botones o títulos. Si hay requisitos, duración, modalidad, o coordinador, preséntalos en formato de lista o párrafos claros. Sé amable y profesional.`;
 
     // Preparar el historial de conversación
     const contents = [
