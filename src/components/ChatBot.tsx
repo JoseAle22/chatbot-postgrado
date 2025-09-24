@@ -58,17 +58,8 @@ const AlertCircle = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const X = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-)
 
-const ArrowLeft = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-  </svg>
-)
+
 
 const Stethoscope = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +109,7 @@ interface ChatBotProps {
   onClose?: () => void
 }
 
-export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
+export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -524,14 +515,6 @@ FORMATO DE RESPUESTA:
       setMessages((prev) => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleGoBack = () => {
-    if (isModal && onClose) {
-      onClose()
-    } else {
-      window.location.href = "/"
     }
   }
 
