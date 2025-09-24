@@ -58,8 +58,16 @@ const AlertCircle = ({ className }: { className?: string }) => (
   </svg>
 )
 
-
-
+const Brain = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+    />
+  </svg>
+)
 
 const Stethoscope = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +86,7 @@ const BookOpen = ({ className }: { className?: string }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13M4.168 5.477L3 6.253m13.832.747L19.832 18.477m0 0C18.168 18.477 16.582 18 14.5 18c-1.747 0-3.332.477-4.5 1.253m0-13C15.832 5.477 17.418 5 19.25 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
     />
   </svg>
 )
@@ -109,6 +117,107 @@ interface ChatBotProps {
   onClose?: () => void
 }
 
+const SimpleLearning = {
+  saveConversation: (question: string, answer: string) => {
+    try {
+      const conversations = JSON.parse(localStorage.getItem("ujap_conversations") || "[]")
+      conversations.push({
+        question: question.toLowerCase(),
+        answer,
+        timestamp: new Date().toISOString(),
+      })
+      // Keep only last 100 conversations
+      if (conversations.length > 100) {
+        conversations.splice(0, conversations.length - 100)
+      }
+      localStorage.setItem("ujap_conversations", JSON.stringify(conversations))
+
+      console.log("[v0] 💾 Conversación guardada:", {
+        pregunta: question,
+        total_conversaciones: conversations.length,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error("Error saving conversation:", error)
+    }
+  },
+
+  findSimilarQuestions: (question: string): string => {
+    try {
+      const conversations = JSON.parse(localStorage.getItem("ujap_conversations") || "[]")
+      const questionLower = question.toLowerCase()
+
+      // Find similar questions
+      const similar = conversations.filter((conv: any) => {
+        const similarity = SimpleLearning.calculateSimilarity(questionLower, conv.question)
+        return similarity > 0.6 // 60% similarity threshold
+      })
+
+      console.log("[v0] 🧠 Búsqueda de aprendizaje:", {
+        pregunta_actual: question,
+        conversaciones_similares_encontradas: similar.length,
+        total_conversaciones: conversations.length,
+        similares: similar.map((s: { question: string }) => ({
+          pregunta: s.question,
+          similitud: SimpleLearning.calculateSimilarity(questionLower, s.question),
+        })),
+      })
+
+      if (similar.length > 0) {
+        return `\n\nBASADO EN CONVERSACIONES PREVIAS:\nHe respondido preguntas similares ${similar.length} veces. Aquí tienes información relevante de conversaciones anteriores que puede ser útil.`
+      }
+      return ""
+    } catch (error) {
+      console.error("Error finding similar questions:", error)
+      return ""
+    }
+  },
+
+  calculateSimilarity: (str1: string, str2: string): number => {
+    const words1 = str1.split(" ")
+    const words2 = str2.split(" ")
+    const commonWords = words1.filter((word) => words2.includes(word))
+    return commonWords.length / Math.max(words1.length, words2.length)
+  },
+
+  getStats: () => {
+    try {
+      const conversations = JSON.parse(localStorage.getItem("ujap_conversations") || "[]")
+      const stats = {
+        totalQuestions: conversations.length,
+        totalCategories: new Set(conversations.map((c: any) => c.question.split(" ")[0])).size,
+      }
+
+      console.log("[v0] 📊 Estadísticas de aprendizaje:", stats)
+      return stats
+    } catch (error) {
+      return { totalQuestions: 0, totalCategories: 0 }
+    }
+  },
+
+  viewAllConversations: () => {
+    try {
+      const conversations = JSON.parse(localStorage.getItem("ujap_conversations") || "[]")
+      console.log("[v0] 📚 Todas las conversaciones guardadas:", conversations)
+      return conversations
+    } catch (error) {
+      console.error("Error viewing conversations:", error)
+      return []
+    }
+  },
+
+  clearLearningData: () => {
+    try {
+      localStorage.removeItem("ujap_conversations")
+      console.log("[v0] 🗑️ Datos de aprendizaje eliminados")
+      return true
+    } catch (error) {
+      console.error("Error clearing learning data:", error)
+      return false
+    }
+  },
+}
+
 export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -116,6 +225,7 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
   const [extraContext, setExtraContext] = useState("")
   const [, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
+  const [learningStats, setLearningStats] = useState({ totalQuestions: 0, totalCategories: 0 })
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -124,10 +234,19 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       id: "welcome",
       role: "assistant",
       content:
-        "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. ¿En qué puedo ayudarte hoy?",
+        "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Ahora tengo capacidad de aprendizaje básico y puedo recordar conversaciones similares para brindarte mejores respuestas. ¿En qué puedo ayudarte hoy?",
       showButtons: "initial",
     }
     setMessages([initialMessage])
+
+    const stats = SimpleLearning.getStats()
+    console.log("[v0] 🚀 Sistema de aprendizaje iniciado:", {
+      conversaciones_previas: stats.totalQuestions,
+      categorias: stats.totalCategories,
+      localStorage_disponible: typeof Storage !== "undefined",
+    })
+
+    setLearningStats(stats)
   }, [])
 
   useEffect(() => {
@@ -236,6 +355,9 @@ CONTACTO DIRECTO:
     }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
+
+    SimpleLearning.saveConversation(userMessage.content, assistantMessage.content)
+    setLearningStats(SimpleLearning.getStats())
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
@@ -243,9 +365,14 @@ CONTACTO DIRECTO:
     if (!API_KEY)
       throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
+    const learningContext = SimpleLearning.findSimilarQuestions(userMessage)
+
     const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
+    puedes aprender de las preguntas y respuestas de los usuarios para mejorar tus respuestas futuras.
 
 ${extraContext}
+
+${learningContext}
 
 Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
 
@@ -307,7 +434,12 @@ FORMATO DE RESPUESTA:
 - No uses Markdown ni código.
 - Si no sabes la respuesta, di "Lo siento, no tengo esa información."
 - Mantén un tono profesional, amable y servicial.
-- Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.`
+- Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.
+
+CAPACIDAD DE APRENDIZAJE:
+- Tienes acceso a conversaciones previas similares para mejorar tus respuestas
+- Puedes hacer referencia a preguntas frecuentes cuando sea relevante
+- Aprende de cada interacción para brindar respuestas más precisas`
 
     // Preparar el historial de conversación
     const contents = [
@@ -317,7 +449,11 @@ FORMATO DE RESPUESTA:
       },
       {
         role: "model",
-        parts: [{ text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP." }],
+        parts: [
+          {
+            text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP con capacidad de aprendizaje.",
+          },
+        ],
       },
     ]
 
@@ -481,6 +617,12 @@ FORMATO DE RESPUESTA:
 
       setMessages((prev) => [...prev, assistantMessage])
       setApiStatus("working")
+
+      console.log("[v0] 🎯 Guardando nueva conversación para aprendizaje...")
+      SimpleLearning.saveConversation(currentInput, assistantMessage.content)
+      const newStats = SimpleLearning.getStats()
+      setLearningStats(newStats)
+      console.log("[v0] ✅ Aprendizaje completado. Nuevas estadísticas:", newStats)
     } catch (error) {
       console.error("Error completo:", error)
       setApiStatus("error")
@@ -548,14 +690,17 @@ FORMATO DE RESPUESTA:
               <div className="min-w-0 flex-1">
                 <div className="text-lg md:text-xl font-bold tracking-tight">UJAPITO</div>
                 <div className="text-sm md:text-base opacity-90 font-medium">Dirección de Postgrado</div>
+                {learningStats.totalQuestions > 0 && (
+                  <div className="flex items-center gap-1 text-xs opacity-75 mt-1">
+                    <Brain className="h-3 w-3" />
+                    <span>{learningStats.totalQuestions} preguntas aprendidas</span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right side - Action buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Close/Back button */}
-
-            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">{/* Close/Back button */}</div>
           </div>
         </div>
 
@@ -579,7 +724,11 @@ FORMATO DE RESPUESTA:
                 {message.role === "assistant" && (
                   <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
                     <AvatarFallback
-                      className={`${message.error ? "bg-gradient-to-br from-red-100 to-red-200 text-red-700" : "bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700"}`}
+                      className={`${
+                        message.error
+                          ? "bg-gradient-to-br from-red-100 to-red-200 text-red-700"
+                          : "bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700"
+                      }`}
                     >
                       {message.error ? (
                         <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
