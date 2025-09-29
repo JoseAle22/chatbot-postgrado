@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import ProgramButtons from "./ProgramButtons"
+import { LearningSystem } from "@/lib/learning-system"
+import { AIService } from "@/lib/ai-service"
 
 // SVG Icon Components
 const Send = ({ className }: { className?: string }) => (
@@ -58,8 +60,17 @@ const AlertCircle = ({ className }: { className?: string }) => (
   </svg>
 )
 
+const X = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
 
-
+const ArrowLeft = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+)
 
 const Stethoscope = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,6 +100,8 @@ interface Message {
   content: string
   error?: boolean
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
+  feedback?: "positive" | "negative"
+  confidence?: number
 }
 
 interface Program {
@@ -109,13 +122,14 @@ interface ChatBotProps {
   onClose?: () => void
 }
 
-export default function ChatBot({ isModal = false }: ChatBotProps) {
+export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
   const [extraContext, setExtraContext] = useState("")
   const [, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
+  const [conversationId, setConversationId] = useState<string>("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -128,7 +142,19 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       showButtons: "initial",
     }
     setMessages([initialMessage])
+
+    initializeConversation()
   }, [])
+
+  const initializeConversation = async () => {
+    try {
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const newConversationId = await LearningSystem.saveConversation(sessionId)
+      setConversationId(newConversationId)
+    } catch (error) {
+      console.error("Error initializing conversation:", error)
+    }
+  }
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -239,11 +265,33 @@ CONTACTO DIRECTO:
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
-    const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
-    if (!API_KEY)
-      throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
+    try {
+      // Use the enhanced AI service
+      const response = await AIService.generateResponse(userMessage, conversationHistory, conversationId)
 
-    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
+      // Save messages to learning system
+      if (conversationId) {
+        await LearningSystem.saveMessage(conversationId, "user", userMessage, response.intent)
+        await LearningSystem.saveMessage(
+          conversationId,
+          "assistant",
+          response.content,
+          response.intent,
+          response.confidence,
+          response.responseTime,
+        )
+      }
+
+      return response.content
+    } catch (error) {
+      console.error("Error in AI service:", error)
+
+      // Fallback to original Gemini implementation
+      const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
+      if (!API_KEY)
+        throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
+
+      const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
 
 ${extraContext}
 
@@ -309,92 +357,98 @@ FORMATO DE RESPUESTA:
 - Mantén un tono profesional, amable y servicial.
 - Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.`
 
-    // Preparar el historial de conversación
-    const contents = [
-      {
-        role: "user",
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP." }],
-      },
-    ]
-
-    // Agregar historial de conversación (últimos 10 mensajes para no exceder límites)
-    const recentHistory = conversationHistory.slice(-10)
-    for (const msg of recentHistory) {
-      if (msg.role === "user") {
-        contents.push({
+      // Preparar el historial de conversación
+      const contents = [
+        {
           role: "user",
-          parts: [{ text: msg.content }],
-        })
-      } else if (msg.role === "assistant" && !msg.error) {
-        contents.push({
-          role: "model",
-          parts: [{ text: msg.content }],
-        })
-      }
-    }
-
-    // Agregar el mensaje actual
-    contents.push({
-      role: "user",
-      parts: [{ text: userMessage }],
-    })
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+          parts: [{ text: systemPrompt }],
         },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
+        {
+          role: "model",
+          parts: [{ text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP." }],
+        },
+      ]
+
+      // Agregar historial de conversación (últimos 10 mensajes para no exceder límites)
+      const recentHistory = conversationHistory.slice(-10)
+      for (const msg of recentHistory) {
+        if (msg.role === "user") {
+          contents.push({
+            role: "user",
+            parts: [{ text: msg.content }],
+          })
+        } else if (msg.role === "assistant" && !msg.error) {
+          contents.push({
+            role: "model",
+            parts: [{ text: msg.content }],
+          })
+        }
+      }
+
+      // Agregar el mensaje actual
+      contents.push({
+        role: "user",
+        parts: [{ text: userMessage }],
+      })
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          body: JSON.stringify({
+            contents,
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
             },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE",
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE",
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE",
-            },
-          ],
-        }),
-      },
-    )
+            safetySettings: [
+              {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE",
+              },
+              {
+                category: "HARM_CATEGORY_HATE_SPEECH",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE",
+              },
+              {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE",
+              },
+              {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE",
+              },
+            ],
+          }),
+        },
+      )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`)
+      }
+
+      const data = await response.json()
+      const geminiResponse =
+        data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
+
+      // Save fallback response to learning system
+      if (conversationId) {
+        await LearningSystem.saveMessage(conversationId, "user", userMessage)
+        await LearningSystem.saveMessage(conversationId, "assistant", geminiResponse)
+      }
+
+      return geminiResponse
     }
-
-    const data = await response.json()
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
   }
 
   const cleanResponse = (text: string) => {
-    return text
-      .replace(/\*/g, "") // Quita todos los asteriscos
-      .replace(/^- /gm, "") // Quita guiones al inicio de líneas
-      .replace(/\n{3,}/g, "\n\n") // Reduce saltos de línea excesivos
-      .trim()
+    return AIService.cleanResponse(text)
   }
 
   const detectProgramIntent = (message: string): boolean => {
@@ -440,6 +494,24 @@ FORMATO DE RESPUESTA:
     return programKeywords.some((keyword) => lowerMessage.includes(keyword))
   }
 
+  const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
+    try {
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)))
+
+      if (conversationId) {
+        await LearningSystem.saveFeedback(
+          conversationId,
+          feedback,
+          feedback === "positive" ? 5 : 1,
+          feedback === "positive" ? "Usuario encontró la respuesta útil" : "Usuario no encontró la respuesta útil",
+          messageId,
+        )
+      }
+    } catch (error) {
+      console.error("Error saving feedback:", error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
@@ -469,7 +541,7 @@ FORMATO DE RESPUESTA:
         return
       }
 
-      console.log("Enviando mensaje a Gemini:", currentInput)
+      console.log("Enviando mensaje a sistema de IA:", currentInput)
 
       const response = await callGeminiAPI(currentInput, messages)
 
@@ -477,6 +549,7 @@ FORMATO DE RESPUESTA:
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: cleanResponse(response),
+        confidence: 0.8,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -518,6 +591,14 @@ FORMATO DE RESPUESTA:
     }
   }
 
+  const handleGoBack = () => {
+    if (isModal && onClose) {
+      onClose()
+    } else {
+      window.location.href = "/"
+    }
+  }
+
   const containerClass = isModal
     ? "h-full md:h-auto flex items-center justify-center p-0 md:p-0"
     : "min-h-screen-safe bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center p-4 md:p-6 rounded-2xl backdrop-blur-sm"
@@ -554,7 +635,14 @@ FORMATO DE RESPUESTA:
             {/* Right side - Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Close/Back button */}
-
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-full h-9 w-9 p-0 transition-all duration-200 hover:scale-105"
+                onClick={handleGoBack}
+              >
+                {isModal ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
         </div>
@@ -605,8 +693,44 @@ FORMATO DE RESPUESTA:
                     </p>
                   </div>
 
+                  {message.role === "assistant" && !message.error && !message.showButtons && (
+                    <div className="flex gap-2 justify-start">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleFeedback(message.id, "positive")}
+                        className={`h-8 px-3 text-xs ${
+                          message.feedback === "positive"
+                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        👍 Útil
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleFeedback(message.id, "negative")}
+                        className={`h-8 px-3 text-xs ${
+                          message.feedback === "negative"
+                            ? "bg-red-100 text-red-700 hover:bg-red-200"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        👎 No útil
+                      </Button>
+                    </div>
+                  )}
+
                   {message.showButtons === "initial" && (
                     <div className="flex flex-col gap-2 max-w-sm">
+                      <Button
+                        onClick={() => handleInitialResponse("yes")}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white justify-start"
+                        size="sm"
+                      >
+                        ✅ Sí, puedes ayudarme
+                      </Button>
                       <Button
                         onClick={() => handleInitialResponse("programs")}
                         className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white justify-start"

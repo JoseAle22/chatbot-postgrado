@@ -10,10 +10,13 @@ const X = ({ className }: { className?: string }) => (
 )
 
 interface ChatModalProps {
+  isOpen: boolean
   onClose: () => void
 }
 
-export default function ChatModal({ onClose }: ChatModalProps) {
+export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
+  if (!isOpen) return null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Fondo transparente oscuro */}
