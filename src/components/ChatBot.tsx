@@ -6,6 +6,26 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import ProgramButtons from "./ProgramButtons"
+import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+async function saveMessageToFirestore(message: Message) {
+  try {
+    await addDoc(collection(db, "chatMessages"), message);
+  } catch (error) {
+    console.error("Error guardando mensaje en Firestore:", error);
+  }
+}
+
+// Leer mensajes previos desde Firestore
+async function loadMessagesFromFirestore(): Promise<Message[]> {
+  const q = query(collection(db, "chatMessages"), orderBy("timestamp", "asc"));
+  const querySnapshot = await getDocs(q);
+  // Filtrar y mapear solo los mensajes válidos
+  return querySnapshot.docs
+    .map(doc => doc.data())
+    .filter((msg): msg is Message => typeof msg.id === "string" && typeof msg.role === "string" && typeof msg.content === "string");
+}
 
 // SVG Icon Components
 const Send = ({ className }: { className?: string }) => (
@@ -98,6 +118,7 @@ interface Message {
   content: string
   error?: boolean
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
+  timestamp?: number
 }
 
 interface Program {
@@ -208,73 +229,43 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     setChatState("conversation")
   }
 
-  const handleProgramSelect = async (program: Program) => {
+  const handleProgramSelect = (program: Program) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: `Más información sobre ${program.name}`,
     }
-    setMessages((prev) => [...prev, userMessage])
-    setIsLoading(true)
-    try {
-      // Forzar uso del .txt correcto
-      const response = await callGeminiAPI(userMessage.content, [...messages, userMessage])
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: cleanResponse(response),
-      }
-      setMessages((prev) => [...prev, assistantMessage])
-      setApiStatus("working")
-    } catch (error) {
-      setApiStatus("error")
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: error instanceof Error ? error.message : "Error desconocido",
-        error: true,
-      }])
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
-  // Detecta si la pregunta menciona un programa y retorna el nombre de archivo .txt correspondiente
-  // Detección flexible de programa en mensaje
-  // Fuzzy matching simple para detectar programas aunque el usuario escriba con errores o variantes
-  const detectProgramFileFromMessage = (message) => {
-    const programas = [
-      { name: ["ciencias de la educacion", "doctorado en ciencias de la educacion", "educacion", "doctorado educacion"], file: "doctorado-ciencias-de-la-educacion.txt" },
-      { name: ["orientacion", "doctorado en orientacion", "orientacion educativa", "doctorado orientacion"], file: "doctorado-orientacion.txt" },
-      { name: ["gerencia de la comunicacion organizacional", "maestria en gerencia de la comunicacion organizacional", "comunicacion organizacional", "gerencia comunicacion"], file: "maestria-gerencia-de-la-comunicacion-organizacional.txt" },
-      { name: ["gerencia y tecnologia de la informacion", "maestria en gerencia y tecnologia de la informacion", "tecnologia de la informacion", "gerencia tecnologia"], file: "maestria-gerencia-y-tecnologia-de-la-informacion.txt" },
-      { name: ["educacion para el desarrollo sustentable", "maestria en educacion para el desarrollo sustentable", "desarrollo sustentable", "educacion sustentable"], file: "maestria-educacion-para-el-desarrollo-sustentable.txt" },
-      { name: ["administracion de empresas", "especializacion en administracion de empresas", "admin empresas", "administracion empresas"], file: "especializacion-administracion-de-empresas.txt" },
-      { name: ["automatizacion industrial", "especializacion en automatizacion industrial", "automatizacion"], file: "especializacion-automatizacion-industrial.txt" },
-      { name: ["derecho administrativo", "especializacion en derecho administrativo", "derecho admin"], file: "especializacion-derecho-administrativo.txt" },
-      { name: ["derecho procesal civil", "especializacion en derecho procesal civil", "procesal civil", "derecho procesal"], file: "especializacion-derecho-procesal-civil.txt" },
-      { name: ["docencia en educacion superior", "especializacion en docencia en educacion superior", "docencia superior", "educacion superior"], file: "especializacion-docencia-en-educacion-superior.txt" },
-      { name: ["gerencia de control de calidad e inspeccion de obras", "especializacion en gerencia de control de calidad e inspeccion de obras", "control de calidad", "gerencia calidad"], file: "especializacion-gerencia-de-control-de-calidad-e-inspeccion-de-obras.txt" },
-      { name: ["gestion aduanera y tributaria", "especializacion en gestion aduanera y tributaria", "aduanera tributaria", "gestion aduanera", "gestion tributaria"], file: "especializacion-gestion-aduanera-y-tributaria.txt" },
-      { name: ["gestion y control de las finanzas publicas", "especializacion en gestion y control de las finanzas publicas", "finanzas publicas", "gestion finanzas"], file: "especializacion-gestion-y-control-de-las-finanzas-publicas.txt" },
-      { name: ["telecomunicaciones", "especializacion en telecomunicaciones", "telecom", "telecomunicacion"], file: "especializacion-telecomunicaciones.txt" },
-    ];
-    // Normalizar mensaje
-    const normalized = message.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-    // Fuzzy: buscar coincidencia parcial (>=70% de palabras del nombre)
-    for (const prog of programas) {
-      for (const variant of prog.name) {
-        const words = variant.split(" ");
-        let matchCount = 0;
-        for (const w of words) {
-          if (normalized.includes(w)) matchCount++;
-        }
-        if (matchCount / words.length >= 0.7 || normalized.includes(variant)) {
-          return prog.file;
-        }
-      }
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: `Excelente elección. El ${program.name} es coordinado por ${program.coordinator}. 
+
+INFORMACIÓN DETALLADA:
+${program.description}
+
+DURACIÓN: ${program.duration}
+MODALIDAD: ${program.modality}
+
+REQUISITOS PRINCIPALES:
+${program.requirements.map((req, index) => `${index + 1}. ${req}`).join("\n")}
+
+DOCUMENTOS NECESARIOS:
+1. Dos (2) fotografías tamaño carnet
+2. Copia de cédula ampliada al 150%
+3. Fondo Negro certificado del título de pregrado
+4. Notas certificadas de pregrado
+5. Curriculum Vitae con documentos probatorios
+6. Comprobante de pago del arancel
+
+CONTACTO DIRECTO:
+📧 coordinacion.postgrado@ujap.edu.ve
+📞 +58 241 871 0903
+
+¿Te gustaría conocer más detalles sobre algún aspecto específico del programa?`,
     }
-    return null;
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
@@ -282,28 +273,12 @@ export default function ChatBot({ isModal = false, onClose }: ChatBotProps) {
     if (!API_KEY)
       throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
-    // Detectar si la pregunta es sobre un programa específico
-    let contextToUse = extraContext;
-    const programFile = detectProgramFileFromMessage(userMessage);
-    if (programFile) {
-      try {
-        const res = await fetch(`/programas/${programFile}`);
-        if (res.ok) {
-          contextToUse = await res.text();
-        }
-      } catch {}
-    }
+    // Formatear todo el historial de mensajes como texto
+    const historialFormateado = conversationHistory
+      .map(msg => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`)
+      .join("\n");
 
-    const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
-
-CONTEXTUALIZA Y RESPONDE SOLO CON LA SIGUIENTE INFORMACIÓN DEL PROGRAMA:
-----------------------
-${contextToUse}
-----------------------
-
-Responde únicamente usando la información proporcionada arriba. Si la respuesta no está de forma literal, busca la información más relevante o relacionada dentro del contexto. Si no encuentras nada relacionado, responde exactamente: "No tengo esa información en el contexto proporcionado.". No inventes ni agregues información externa.
-
-Si el usuario pide información sobre un curso o programa, responde de forma clara, ordenada y comprensible para humanos, aunque el nombre no sea exacto. Resume y organiza la información relevante del contexto, evitando repetir lo que ya se muestra en los botones o títulos. Si hay requisitos, duración, modalidad, o coordinador, preséntalos en formato de lista o párrafos claros. Sé amable y profesional.`;
+    const systemPrompt = `HISTORIAL DE CONVERSACIÓN COMPLETO:\n${historialFormateado}\n\nEres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP) e Información relevante para los Estudiantes, Como lugares de interés como restaurantes, hoteles y establecimientos de interés.\n\n${extraContext}\n\nTu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:\n\nPROGRAMAS ACADÉMICOS:\n- Doctorados: Ciencias de la Educación, Orientación\n- Maestrías: Gerencia de la Comunicación Organizacional, Gerencia y Tecnología de la Información, Educación para el Desarrollo Sustentable\n- Especializaciones: Administración de Empresas, Automatización Industrial, Derecho Administrativo, Derecho Procesal Civil, Docencia en Educación Superior, Gerencia de Control de Calidad e Inspección de Obras, Gestión Aduanera y Tributaria, Gestión y Control de las Finanzas Públicas, Telecomunicaciones\n\nINFORMACIÓN DE CONTACTO:\n- Email: coordinacion.postgrado@ujap.edu.ve\n- Teléfono: +58 241 871 0903\n- UJAP General: +58 241 871 4240 ext. 1260\n- Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo\n- Instagram: @ujap_oficial\n\nAUTORIDADES:\n- Directora General: Dra. Haydee Páez (también Coordinadora del Doctorado en Ciencias de la Educación)\n- Dra. Omaira Lessire de González: Coordinadora del Doctorado en Orientación\n- Dra. Thania Oberto: Coordinadora de Maestría en Gerencia de la Comunicación Organizacional y varias especializaciones\n- MSc. Wilmer Sanz: Coordinador de Especialización en Automatización Industrial\n- MSc. Susan León: Coordinadora de Maestría en Gerencia y Tecnología de la Información y Especialización en Docencia\n- MSc. Ledys Herrera: Coordinadora de Especialización en Derecho Procesal Civil\n- Esp. Federico Estaba: Coordinador de Especialización en Gestión y Control de las Finanzas Públicas\n- Esp. Adriana Materán: Coordinadora de Especialización en Odontopediatría\n\nINFORMACIÓN INSTITUCIONAL:\n- La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela\n- Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario\n- Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales\n- Promueve la excelencia, innovación e internacionalización.\n\nDOCUMENTOS Y REQUISITOS:\n- Dos (2) fotografías tamaño carnet.\n- Copia de la cédula de identidad ampliada al 150%.\n- Fondo Negro certificado del titulo de pregrado.\n- Notas certificadas de las calificaciones obtenidas en los estudios de pregrado.\n- Curriculum Vitae con documentos probatorios para la aplicacion del Baremo.\n- Comprobante de pago del arancel de admision.\n- En el doctorado adicionalmente debera consignar: fondo negro del titulo de magister certificado, dos referencias academicas, propuesta del tema de Tesis Doctoral y presentar una entrevista.\n\nEsos Documentos deben ser consignados en la oficina de Control de Estudios en el respectivo sobre de inscripcion (se adquiere en el centro de copiado).\n\nMODALIDADES DE PAGO:\nCuentas Autorizadas para los pagos:\nCuentas corrientes a nombre de: Sociedad Civil Universidad José Antonio Páez, RIF: J-30400858-9.\n\nBanco Nacional de Credito 0191-0085-50-2185041363\nBanco Banesco 0134-0025-34-0251066811\nBanco Provincial 0108-0082-08-0100003985\nBanco de Venezuela 0102-0114-48-0001031353\nBanco Nacional de Crédito(Dolares) 0191-0127-43-2300010599\nBanco Nacional de Crédito(Euros) 0191-0127-44-2400000188\n\nFORMATO DE RESPUESTA:\n- Responde siempre en texto claro y ordenado.\n- No uses asteriscos (*), guiones (-) ni símbolos innecesarios.\n- Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.\n- Separa las secciones con títulos en mayúsculas.\n- No uses Markdown ni código.\n- Si no sabes la respuesta, di "Lo siento, no tengo esa información."\n- Mantén un tono profesional, amable y servicial.\n- Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.\n\nLugares Cercanos de la UJAP:\n- Restaurantes.\n- Hoteles.\n- y establecimientos de interés.`
 
     // Preparar el historial de conversación
     const contents = [
@@ -340,7 +315,7 @@ Si el usuario pide información sobre un curso o programa, responde de forma cla
     })
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -437,19 +412,21 @@ Si el usuario pide información sobre un curso o programa, responde de forma cla
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input,
-    }
+      timestamp: Date.now(),
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    const currentInput = input
-    setInput("")
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    saveMessageToFirestore(userMessage);
+    const currentInput = input;
+    setInput("");
+    setIsLoading(true);
 
     try {
       if (detectProgramIntent(currentInput)) {
@@ -458,25 +435,27 @@ Si el usuario pide información sobre un curso o programa, responde de forma cla
           role: "assistant",
           content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
           showButtons: "program-type",
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-        setChatState("program-selection")
-        setIsLoading(false)
-        return
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setChatState("program-selection");
+        setIsLoading(false);
+        return;
       }
-
-      console.log("Enviando mensaje a Gemini:", currentInput)
-
-      const response = await callGeminiAPI(currentInput, messages)
-
+  // Leer historial de mensajes de Firestore para contexto
+  const firebaseMessages: Message[] = await loadMessagesFromFirestore();
+  console.log("Mensajes enviados a la IA desde Firebase:", firebaseMessages);
+  // Llamada a la IA usando historial de Firestore como contexto
+  const response = await callGeminiAPI(currentInput, firebaseMessages);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: cleanResponse(response),
-      }
-
-      setMessages((prev) => [...prev, assistantMessage])
-      setApiStatus("working")
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      saveMessageToFirestore(assistantMessage);
+      setApiStatus("working");
     } catch (error) {
       console.error("Error completo:", error)
       setApiStatus("error")
