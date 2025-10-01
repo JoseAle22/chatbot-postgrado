@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import ChatBot from "./ChatBot"
 
 const X = ({ className }: { className?: string }) => (
@@ -10,10 +9,13 @@ const X = ({ className }: { className?: string }) => (
 )
 
 interface ChatModalProps {
+  isOpen: boolean
   onClose: () => void
 }
 
-export default function ChatModal({ onClose }: ChatModalProps) {
+export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
+  if (!isOpen) return null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Fondo transparente oscuro */}
@@ -33,14 +35,12 @@ export default function ChatModal({ onClose }: ChatModalProps) {
         "
       >
         {/* Botón cerrar */}
-        <Button
+        <button
           onClick={onClose}
-          variant="ghost"
-          size="sm"
-          className="absolute top-3 right-3 bg-white/90 hover:bg-white text-gray-700 rounded-full h-9 w-9 flex items-center justify-center shadow-md z-20"
+          className="absolute top-3 right-3 bg-white/90 hover:bg-white text-gray-700 rounded-full h-9 w-9 flex items-center justify-center shadow-md z-20 border-none"
         >
           <X className="h-5 w-5" />
-        </Button>
+        </button>
 
         {/* Contenido */}
         <div className="flex-1 overflow-hidden bg-white rounded-lg">

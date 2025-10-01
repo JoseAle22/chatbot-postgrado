@@ -68,7 +68,7 @@ export default function FloatingChatButton() {
       )}
 
       {/* Chat Modal */}
-      {showModal && <ChatModal onClose={handleCloseModal} />}
+  {showModal && <ChatModal isOpen={showModal} onClose={handleCloseModal} />}
     </>
   )
 }

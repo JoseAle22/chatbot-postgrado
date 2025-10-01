@@ -85,7 +85,7 @@ const clinicalPrograms: Program[] = [
     duration: "3 años",
     modality: "Presencial",
     icon: "🦷",
-    image: "/images/odontpedia.jpg",
+    image: "/placeholder-uiqnf.png",
   },
 ]
 
@@ -106,7 +106,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "4 años",
     modality: "Semipresencial",
     icon: "🎓",
-    image: "/images/cienciaseducacion.webp",
+    image: "/placeholder-hfix5.png",
   },
   {
     id: "orientacion",
@@ -124,7 +124,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "4 años",
     modality: "Semipresencial",
     icon: "🧭",
-    image: "/images/cienciasorientiacion.webp",
+    image: "/placeholder-m9ja4.png",
   },
   {
     id: "gerencia-comunicacion",
@@ -142,7 +142,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "2 años",
     modality: "Semipresencial",
     icon: "📢",
-    image: "/images/cienciasgerencia.webp",
+    image: "/placeholder-eay80.png",
   },
   {
     id: "gerencia-tecnologia",
@@ -160,7 +160,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "2 años",
     modality: "Semipresencial",
     icon: "💻",
-    image: "/images/cienciastegnologia.webp",
+    image: "/placeholder-vcilu.png",
   },
   {
     id: "educacion-sustentable",
@@ -178,7 +178,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "2 años",
     modality: "Semipresencial",
     icon: "🌱",
-    image: "/images/educaciondesarrollo.webp",
+    image: "/placeholder-1t5wj.png",
   },
   {
     id: "administracion-empresas",
@@ -191,7 +191,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏢",
-    image: "/images/especialicacionempresas.webp",
+    image: "/placeholder-o52rl.png",
   },
   {
     id: "automatizacion-industrial",
@@ -204,7 +204,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Presencial",
     icon: "⚙️",
-    image: "/images/especializacionmaquinas.webp",
+    image: "/placeholder-qbefq.png",
   },
   {
     id: "derecho-administrativo",
@@ -217,7 +217,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "⚖️",
-    image: "/images/especializacionempresasgeneral.webp",
+    image: "/placeholder-n22q0.png",
   },
   {
     id: "derecho-procesal-civil",
@@ -230,7 +230,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "📋",
-    image: "/images/derechoprocesal.webp",
+    image: "/placeholder-10rdl.png",
   },
   {
     id: "docencia-superior",
@@ -243,7 +243,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "👨‍🏫",
-    image: "/images/docencia.webp",
+    image: "/placeholder-f0vtx.png",
   },
   {
     id: "control-calidad",
@@ -256,7 +256,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏗️",
-    image: "/images/controldecalidad.webp",
+    image: "/placeholder-gpfyw.png",
   },
   {
     id: "gestion-aduanera",
@@ -268,7 +268,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🚢",
-    image: "/images/aduaneratributaria.webp",
+    image: "/placeholder-qxffm.png",
   },
   {
     id: "finanzas-publicas",
@@ -280,7 +280,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "🏛️",
-    image: "/images/finanzas.webp",
+    image: "/placeholder-pxhdl.png",
   },
   {
     id: "telecomunicaciones",
@@ -293,7 +293,7 @@ const nonClinicalPrograms: Program[] = [
     duration: "18 meses",
     modality: "Semipresencial",
     icon: "📡",
-    image: "/images/telecom.webp",
+    image: "/placeholder-jh8yf.png",
   },
 ]
 
