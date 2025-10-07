@@ -474,7 +474,7 @@ CONTACTO DIRECTO:
 
       if (knowledgeResults.length > 0) {
         const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
-        const prompt = `Responde de forma concisa y directa a la "Pregunta original" utilizando únicamente la "Información encontrada". No añadas información que no haya sido solicitada. Responde como UJAPITO, asistente de postgrado.\n\nInformación encontrada:\n${allAnswers}\n\nPregunta original: "${currentInput}"`
+        const prompt = `Responde de forma concisa y directa a la "Pregunta original" utilizando únicamente la "Información encontrada". No añadas información que no haya sido solicitada. **Utiliza formato Markdown para las listas (usando guiones - o asteriscos *) y para resaltar texto importante (usando **negrita**)**. Responde como UJAPITO, asistente de postgrado.\n\nInformación encontrada:\n${allAnswers}\n\nPregunta original: "${currentInput}"`
         // Usa el historial que ya incluye el mensaje del usuario
         response = await callGeminiAPI(prompt, updatedMessagesWithUser)
       } else {
