@@ -336,7 +336,7 @@ CONTACTO DIRECTO:
               temperature: 0.7,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 1024,
+              maxOutputTokens: 4096,
             },
             safetySettings: [
               {
@@ -445,12 +445,16 @@ CONTACTO DIRECTO:
       content: input,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    // 1. Añade SOLO el mensaje del usuario a la UI y prepara el historial
+    const updatedMessagesWithUser = [...messages, userMessage]
+    setMessages(updatedMessagesWithUser)
+
     const currentInput = input
     setInput("")
     setIsLoading(true)
 
     try {
+      // 2. Detección de intención de programa (no necesita llamada a IA)
       if (detectProgramIntent(currentInput)) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -458,80 +462,48 @@ CONTACTO DIRECTO:
           content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
           showButtons: "program-type",
         }
-        setMessages((prev) => [...prev, assistantMessage])
+        setMessages(prev => [...prev, assistantMessage])
         setChatState("program-selection")
         setIsLoading(false)
         return
       }
 
-      // Buscar en la base de datos de conocimiento
+      // 3. Búsqueda en BD y llamada a IA (si es necesario)
       const knowledgeResults = await LearningSystem.searchKnowledge(currentInput)
+      let response = ""
+
       if (knowledgeResults.length > 0) {
-        // Junta todas las respuestas relevantes
         const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
-        // Pedir a Gemini que redacte la respuesta encontrada
         const prompt = `Redacta la siguiente información de forma clara, profesional y personalizada para el usuario. Responde como UJAPITO, asistente de postgrado. Información encontrada:\n${allAnswers}\nPregunta original: "${currentInput}". Si hay varias respuestas, intégralas en una sola respuesta completa.`
-        const response = await callGeminiAPI(prompt, messages)
-        // Limitar la longitud de la respuesta a 9900 caracteres
-        const safeContent = cleanResponse(response).slice(0, 9900)
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: safeContent,
-          confidence: 1.0,
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-        setApiStatus("working")
-        setIsLoading(false)
-        return
+        // Usa el historial que ya incluye el mensaje del usuario
+        response = await callGeminiAPI(prompt, updatedMessagesWithUser)
+      } else {
+        console.log("No se encontró conocimiento. Enviando a IA:", currentInput)
+        // Usa el historial que ya incluye el mensaje del usuario
+        response = await callGeminiAPI(currentInput, updatedMessagesWithUser)
       }
 
-      console.log("Enviando mensaje a sistema de IA:", currentInput)
-
-      const response = await callGeminiAPI(currentInput, messages)
-
+      // 4. AHORA añade el mensaje del asistente a la UI
       const safeContent = cleanResponse(response).slice(0, 9900)
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: safeContent,
-        confidence: 1.0,
+        confidence: knowledgeResults.length > 0 ? 1.0 : 0.5,
       }
-
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages(prev => [...prev, assistantMessage])
       setApiStatus("working")
+
     } catch (error) {
-      console.error("Error completo:", error)
+      console.error("Error completo en handleSubmit:", error)
       setApiStatus("error")
-
-      // Determinar el tipo de error y mostrar mensaje apropiado
-      let errorMessage = "Lo siento, ha ocurrido un error inesperado."
-
-      if (error instanceof Error) {
-        if (error.message.includes("API key")) {
-          errorMessage =
-            "⚠️ Configuración requerida: La API key de Google Gemini no está configurada correctamente.\n\n📋 Pasos para configurar:\n1. Crea un archivo `.env.local` en la raíz del proyecto\n2. Agrega: `VITE_GOOGLE_GENERATIVE_AI_API_KEY=tu_api_key`\n3. Obtén tu API key en: https://makersuite.google.com/app/apikey\n4. Reinicia el servidor con `npm run dev`"
-        } else if (error.message.includes("403") || error.message.includes("401")) {
-          errorMessage =
-            "🔑 Error de autenticación: La API key no es válida o ha expirado.\n\n✅ Soluciones:\n- Verifica que la API key sea correcta\n- Genera una nueva API key en Google AI Studio\n- Asegúrate de que la API esté habilitada"
-        } else if (error.message.includes("429")) {
-          errorMessage =
-            "⏱️ Límite alcanzado: Se ha excedido el límite de la API.\n\n⏰ Intenta:\n- Esperar unos minutos antes de volver a intentar\n- Verificar tu cuota en Google AI Studio"
-        } else if (error.message.includes("400")) {
-          errorMessage =
-            "📝 Error en la solicitud: Hay un problema con el formato de la consulta.\n\n🔄 Intenta:\n- Reformular tu pregunta\n- Usar un mensaje más corto"
-        } else {
-          errorMessage = `❌ Error: ${error.message}\n\n📞 Contacto directo:\n📧 coordinacion.postgrado@ujap.edu.ve\n📞 +582418710903`
-        }
-      }
-
       const errorResponseMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: errorMessage,
+        content: "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud.",
         error: true,
       }
-      setMessages((prev) => [...prev, errorResponseMessage])
+      setMessages(prev => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
     }
