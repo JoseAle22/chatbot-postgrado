@@ -69,13 +69,6 @@ function Login({ onLogin }: { onLogin: () => void }) {
         >
           {loading ? "Ingresando..." : "Ingresar"}
         </button>
-        <button
-          type="button"
-          className="text-orange-700 underline mt-2"
-          onClick={() => navigate("/register")}
-        >
-          ¿No tienes cuenta? Regístrate aquí
-        </button>
       </form>
     </div>
   );
