@@ -435,27 +435,19 @@ CONTACTO DIRECTO:
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-
+  const processUserMessage = async (messageText: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: messageText,
     }
 
-    // 1. Añade SOLO el mensaje del usuario a la UI y prepara el historial
     const updatedMessagesWithUser = [...messages, userMessage]
     setMessages(updatedMessagesWithUser)
-
-    const currentInput = input
-    setInput("")
     setIsLoading(true)
 
     try {
-      // 2. Detección de intención de programa (no necesita llamada a IA)
-      if (detectProgramIntent(currentInput)) {
+      if (detectProgramIntent(messageText)) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -464,26 +456,21 @@ CONTACTO DIRECTO:
         }
         setMessages(prev => [...prev, assistantMessage])
         setChatState("program-selection")
-        setIsLoading(false)
         return
       }
 
-      // 3. Búsqueda en BD y llamada a IA (si es necesario)
-      const knowledgeResults = await LearningSystem.searchKnowledge(currentInput)
+      const knowledgeResults = await LearningSystem.searchKnowledge(messageText)
       let response = ""
 
       if (knowledgeResults.length > 0) {
         const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
-        const prompt = `Responde de forma concisa y directa a la "Pregunta original" utilizando únicamente la "Información encontrada". No añadas información que no haya sido solicitada. **Utiliza formato Markdown para las listas (usando guiones - o asteriscos *) y para resaltar texto importante (usando **negrita**)**. Responde como UJAPITO, asistente de postgrado.\n\nInformación encontrada:\n${allAnswers}\n\nPregunta original: "${currentInput}"`
-        // Usa el historial que ya incluye el mensaje del usuario
+        const prompt = `Responde de forma concisa y directa a la "Pregunta original" utilizando únicamente la "Información encontrada". No añadas información que no haya sido solicitada. **Utiliza formato Markdown para las listas (usando guiones - o asteriscos *) y para resaltar texto importante (usando **negrita**)**. Responde como UJAPITO, asistente de postgrado.\n\nInformación encontrada:\n${allAnswers}\n\nPregunta original: "${messageText}"`
         response = await callGeminiAPI(prompt, updatedMessagesWithUser)
       } else {
-        console.log("No se encontró conocimiento. Enviando a IA:", currentInput)
-        // Usa el historial que ya incluye el mensaje del usuario
-        response = await callGeminiAPI(currentInput, updatedMessagesWithUser)
+        console.log("No se encontró conocimiento. Enviando a IA:", messageText)
+        response = await callGeminiAPI(messageText, updatedMessagesWithUser)
       }
 
-      // 4. AHORA añade el mensaje del asistente a la UI
       const safeContent = cleanResponse(response).slice(0, 9900)
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -495,7 +482,7 @@ CONTACTO DIRECTO:
       setApiStatus("working")
 
     } catch (error) {
-      console.error("Error completo en handleSubmit:", error)
+      console.error("Error completo en processUserMessage:", error)
       setApiStatus("error")
       const errorResponseMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -507,6 +494,14 @@ CONTACTO DIRECTO:
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    const currentInput = input
+    setInput("")
+    await processUserMessage(currentInput)
   }
 
   const containerClass = isModal
@@ -633,11 +628,25 @@ CONTACTO DIRECTO:
                         🎓 Información sobre programas
                       </Button>
                       <Button
-                        onClick={() => handleInitialResponse("other")}
+                        onClick={() => processUserMessage("¿Cuáles son los documentos necesarios para la inscripción?")}
                         className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
                         size="sm"
                       >
-                        💬 Tengo otra consulta
+                        📄 Documentos para inscripción
+                      </Button>
+                      <Button
+                        onClick={() => processUserMessage("¿Cuáles son las cuentas bancarias para los pagos?")}
+                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
+                        size="sm"
+                      >
+                        💳 Cuentas bancarias
+                      </Button>
+                      <Button
+                        onClick={() => processUserMessage("¿Cuáles son los correos de contacto?")}
+                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
+                        size="sm"
+                      >
+                        📧 Correos de contacto
                       </Button>
                     </div>
                   )}
