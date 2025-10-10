@@ -326,9 +326,9 @@ INFORMACIÓN CONTEXTUAL RELEVANTE:`
   // Clean response text
   static cleanResponse(text: string): string {
     return text
-      .replace(/\*/g, "")
-      .replace(/^- /gm, "")
-      .replace(/\n{3,}/g, "\n\n")
+      .replace(/\r\n/g, "\n") // normaliza saltos de línea
+      .replace(/[ \t]+\n/g, "\n") // quita espacios finales de línea
+      .replace(/\n{3,}/g, "\n\n") // colapsa más de 2 saltos en 2
       .trim()
   }
 }

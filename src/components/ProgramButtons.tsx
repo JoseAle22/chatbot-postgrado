@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { LearningSystem } from "@/lib/learning-system"
+import type { KnowledgeItem } from "@/lib/appwrite"
 
 // SVG Icon Components
 const ChevronDown = ({ className }: { className?: string }) => (
@@ -65,242 +67,138 @@ interface Program {
 
 interface ProgramButtonsProps {
   programType: "clinicos" | "no-clinicos"
-  onProgramSelect: (program: Program) => void
+  onProgramSelectTitle: (title: string) => void
 }
 
-const clinicalPrograms: Program[] = [
-  {
-    id: "odontopediatria",
-    name: "Especialización en Odontopediatría",
-    type: "especializacion",
-    coordinator: "Esp. Adriana Materán",
-    description:
-      "Especialización enfocada en la atención odontológica integral de niños y adolescentes, con énfasis en prevención, diagnóstico y tratamiento de patologías bucodentales en pacientes pediátricos.",
-    requirements: [
-      "Título de Odontólogo",
-      "Experiencia mínima de 2 años",
-      "Certificado de salud",
-      "Entrevista personal",
-    ],
-    duration: "3 años",
-    modality: "Presencial",
-    icon: "🦷",
-    image: "/placeholder-uiqnf.png",
-  },
-]
+// Heurística: tipo por título
+const inferTypeFromTitle = (title: string): Program["type"] => {
+  const t = (title || "").toLowerCase()
+  if (t.includes("doctorado")) return "doctorado"
+  if (t.includes("maestr")) return "maestria"
+  return "especializacion"
+}
 
-const nonClinicalPrograms: Program[] = [
-  {
-    id: "ciencias-educacion",
-    name: "Doctorado en Ciencias de la Educación",
-    type: "doctorado",
-    coordinator: "Dra. Haydee Páez",
-    description:
-      "Programa doctoral orientado a la formación de investigadores de alto nivel en el campo educativo, con énfasis en innovación pedagógica y desarrollo sustentable.",
-    requirements: [
-      "Título de Maestría",
-      "Propuesta de tesis doctoral",
-      "Dos referencias académicas",
-      "Entrevista personal",
-    ],
-    duration: "4 años",
-    modality: "Semipresencial",
-    icon: "🎓",
-    image: "/placeholder-hfix5.png",
-  },
-  {
-    id: "orientacion",
-    name: "Doctorado en Orientación",
-    type: "doctorado",
-    coordinator: "Dra. Omaira Lessire de González",
-    description:
-      "Programa doctoral especializado en orientación educativa y vocacional, formando investigadores en el área de desarrollo humano y orientación profesional.",
-    requirements: [
-      "Título de Maestría en área afín",
-      "Experiencia en orientación",
-      "Propuesta de investigación",
-      "Entrevista académica",
-    ],
-    duration: "4 años",
-    modality: "Semipresencial",
-    icon: "🧭",
-    image: "/placeholder-m9ja4.png",
-  },
-  {
-    id: "gerencia-comunicacion",
-    name: "Maestría en Gerencia de la Comunicación Organizacional",
-    type: "maestria",
-    coordinator: "Dra. Thania Oberto",
-    description:
-      "Maestría enfocada en la gestión estratégica de la comunicación en organizaciones, desarrollando competencias en comunicación corporativa y relaciones públicas.",
-    requirements: [
-      "Título universitario",
-      "Experiencia laboral mínima 2 años",
-      "Entrevista personal",
-      "Prueba de admisión",
-    ],
-    duration: "2 años",
-    modality: "Semipresencial",
-    icon: "📢",
-    image: "/placeholder-eay80.png",
-  },
-  {
-    id: "gerencia-tecnologia",
-    name: "Maestría en Gerencia y Tecnología de la Información",
-    type: "maestria",
-    coordinator: "MSc. Susan León",
-    description:
-      "Programa orientado a formar profesionales capaces de gestionar proyectos tecnológicos y liderar la transformación digital en organizaciones.",
-    requirements: [
-      "Título en área tecnológica o afín",
-      "Conocimientos básicos de programación",
-      "Experiencia en TI",
-      "Proyecto de investigación",
-    ],
-    duration: "2 años",
-    modality: "Semipresencial",
-    icon: "💻",
-    image: "/placeholder-vcilu.png",
-  },
-  {
-    id: "educacion-sustentable",
-    name: "Maestría en Educación para el Desarrollo Sustentable",
-    type: "maestria",
-    coordinator: "Coordinación General",
-    description:
-      "Maestría interdisciplinaria que forma educadores comprometidos con el desarrollo sustentable y la responsabilidad ambiental.",
-    requirements: [
-      "Título universitario",
-      "Experiencia en educación",
-      "Compromiso ambiental",
-      "Proyecto de investigación",
-    ],
-    duration: "2 años",
-    modality: "Semipresencial",
-    icon: "🌱",
-    image: "/placeholder-1t5wj.png",
-  },
-  {
-    id: "administracion-empresas",
-    name: "Especialización en Administración de Empresas",
-    type: "especializacion",
-    coordinator: "Dra. Thania Oberto",
-    description:
-      "Especialización diseñada para fortalecer competencias gerenciales y administrativas en el ámbito empresarial.",
-    requirements: ["Título universitario", "Experiencia administrativa", "Entrevista personal"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "🏢",
-    image: "/placeholder-o52rl.png",
-  },
-  {
-    id: "automatizacion-industrial",
-    name: "Especialización en Automatización Industrial",
-    type: "especializacion",
-    coordinator: "MSc. Wilmer Sanz",
-    description:
-      "Programa especializado en sistemas de automatización y control industrial, orientado a la industria 4.0.",
-    requirements: ["Título en Ingeniería", "Conocimientos en control", "Experiencia industrial"],
-    duration: "18 meses",
-    modality: "Presencial",
-    icon: "⚙️",
-    image: "/placeholder-qbefq.png",
-  },
-  {
-    id: "derecho-administrativo",
-    name: "Especialización en Derecho Administrativo",
-    type: "especializacion",
-    coordinator: "Coordinación de Derecho",
-    description:
-      "Especialización en derecho público administrativo, procedimientos y régimen jurídico de la administración pública.",
-    requirements: ["Título de Abogado", "Colegiatura vigente", "Experiencia jurídica"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "⚖️",
-    image: "/placeholder-n22q0.png",
-  },
-  {
-    id: "derecho-procesal-civil",
-    name: "Especialización en Derecho Procesal Civil",
-    type: "especializacion",
-    coordinator: "MSc. Ledys Herrera",
-    description:
-      "Especialización en procedimientos civiles, técnicas de litigación y práctica forense en el ámbito civil.",
-    requirements: ["Título de Abogado", "Colegiatura vigente", "Experiencia en litigios"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "📋",
-    image: "/placeholder-10rdl.png",
-  },
-  {
-    id: "docencia-superior",
-    name: "Especialización en Docencia en Educación Superior",
-    type: "especializacion",
-    coordinator: "MSc. Susan León",
-    description:
-      "Programa orientado a la formación de docentes universitarios con competencias pedagógicas y didácticas avanzadas.",
-    requirements: ["Título universitario", "Experiencia docente", "Vocación pedagógica"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "👨‍🏫",
-    image: "/placeholder-f0vtx.png",
-  },
-  {
-    id: "control-calidad",
-    name: "Especialización en Gerencia de Control de Calidad e Inspección de Obras",
-    type: "especializacion",
-    coordinator: "Dra. Thania Oberto",
-    description:
-      "Especialización en gestión de calidad y supervisión técnica de proyectos de construcción e infraestructura.",
-    requirements: ["Título en Ingeniería o Arquitectura", "Experiencia en construcción", "Conocimientos de normativas"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "🏗️",
-    image: "/placeholder-gpfyw.png",
-  },
-  {
-    id: "gestion-aduanera",
-    name: "Especialización en Gestión Aduanera y Tributaria",
-    type: "especializacion",
-    coordinator: "Coordinación Especializada",
-    description: "Programa especializado en procedimientos aduaneros, comercio internacional y gestión tributaria.",
-    requirements: ["Título universitario", "Experiencia en comercio exterior", "Conocimientos contables"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "🚢",
-    image: "/placeholder-qxffm.png",
-  },
-  {
-    id: "finanzas-publicas",
-    name: "Especialización en Gestión y Control de las Finanzas Públicas",
-    type: "especializacion",
-    coordinator: "Esp. Federico Estaba",
-    description: "Especialización en administración financiera del sector público, presupuesto y control fiscal.",
-    requirements: ["Título universitario", "Experiencia en sector público", "Conocimientos financieros"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "🏛️",
-    image: "/placeholder-pxhdl.png",
-  },
-  {
-    id: "telecomunicaciones",
-    name: "Especialización en Telecomunicaciones",
-    type: "especializacion",
-    coordinator: "Coordinación Técnica",
-    description:
-      "Programa especializado en sistemas de telecomunicaciones, redes y tecnologías de comunicación avanzadas.",
-    requirements: ["Título en Ingeniería", "Conocimientos en telecomunicaciones", "Experiencia técnica"],
-    duration: "18 meses",
-    modality: "Semipresencial",
-    icon: "📡",
-    image: "/placeholder-jh8yf.png",
-  },
-]
+const iconForType = (type: Program["type"]) => {
+  switch (type) {
+    case "doctorado":
+      return "🎓"
+    case "maestria":
+      return "💻"
+    case "especializacion":
+      return "📘"
+    default:
+      return "📘"
+  }
+}
 
-export default function ProgramButtons({ programType, onProgramSelect }: ProgramButtonsProps) {
+// Extrae partes útiles del texto de respuesta: resumen breve, duración, email, teléfono
+function extractSummaryParts(answer: string) {
+  const text = (answer || "").toString()
+
+  // About: primera oración o ~220 caracteres
+  const firstSentenceMatch = text.match(/[^\.!?\n]+[\.!?]/)
+  const aboutRaw = firstSentenceMatch ? firstSentenceMatch[0] : text.slice(0, 220)
+  const about = aboutRaw.trim().replace(/\s+/g, " ")
+
+  // Duración: etiqueta o patrón tipo "18 meses" / "2 años"
+  const durLabel = text.match(/duraci[oó]n\s*[:\-]?\s*([^\n\.]{1,60})/i)
+  let duration: string | undefined
+  if (durLabel && durLabel[1]) {
+    duration = durLabel[1].trim()
+  } else {
+    const durGeneric = text.match(/\b(\d{1,2})\s*(años|año|meses|mes|trimestres|trimestre|semestres|semestre)\b/i)
+    if (durGeneric) duration = `${durGeneric[1]} ${durGeneric[2]}`
+  }
+
+  // Email: primero válido
+  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
+  const email = emailMatch ? emailMatch[0] : undefined
+
+  // Teléfono: secuencia con >= 7 dígitos, permite +, espacios, () y -
+  const phoneCandidates = text.match(/[+]?\d[\d\s().-]{6,}\d/g) || []
+  const normalizeDigits = (s: string) => s.replace(/[^\d]/g, "")
+  const phone = phoneCandidates.find((p) => {
+    const n = normalizeDigits(p)
+    return n.length >= 7 && n.length <= 15
+  })
+
+  return { about, duration, email, phone }
+}
+
+export default function ProgramButtons({ programType, onProgramSelectTitle }: ProgramButtonsProps) {
   const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
+  const [items, setItems] = useState<KnowledgeItem[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const programs = programType === "clinicos" ? clinicalPrograms : nonClinicalPrograms
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+  // Solo obtener los registros categorizados como 'programs'
+  const fetched: KnowledgeItem[] = await LearningSystem.listKnowledgeByCategory("programs")
+
+        // Clasificación basada exclusivamente en keywords normalizados
+        const normalize = (t: string) =>
+          (t || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+
+        // Tokens dentales/específicos (normalizados) para evitar falsos positivos por "clinico" genérico
+        const dentalSet = new Set([
+          "bucal", "bucodental",
+          "odontologia", "odontologico", "odontologicos", "odontologica", "odontologicas",
+          "ortodoncia",
+          "periodoncia",
+          "endodoncia",
+          "odontopediatria",
+          "implante", "implantes",
+          "maxilofacial",
+          "estomatologia",
+        ])
+
+        const filtered = fetched.filter((it) => {
+          const kws = (it.keywords || []).map((k) => normalize(k || ""))
+          // Clasificar clínico solo si encontramos tokens dentales específicos
+          const isClinical = kws.some((k) => {
+            const tokens = k.split(/[^a-z0-9]+/).filter(Boolean)
+            return tokens.some((tok) => dentalSet.has(tok))
+          })
+          return programType === "clinicos" ? isClinical : !isClinical
+        })
+        if (!cancelled) setItems(filtered)
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Error cargando programas")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [programType])
+
+  const programs = useMemo((): Program[] => {
+    return items.map((it) => {
+      const type = inferTypeFromTitle(it.question)
+      return {
+        id: it.$id,
+        name: it.question,
+        type,
+        coordinator: "",
+        description: it.answer,
+        requirements: [],
+        duration: "",
+        modality: "",
+        icon: iconForType(type) ?? "📘",
+        image: undefined,
+      } as Program
+    })
+  }, [items])
 
   const toggleProgram = (programId: string) => {
     setExpandedProgram(expandedProgram === programId ? null : programId)
@@ -328,7 +226,27 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
         <p className="text-sm text-gray-600">Selecciona un programa para ver información detallada</p>
       </div>
 
-      {programs.map((program) => (
+      {loading && (
+        <Card className="border border-gray-200">
+          <CardContent className="p-4 text-sm text-gray-600">Cargando programas...</CardContent>
+        </Card>
+      )}
+
+      {error && (
+        <Card className="border border-red-200 bg-red-50">
+          <CardContent className="p-4 text-sm text-red-700">{error}</CardContent>
+        </Card>
+      )}
+
+      {!loading && !error && programs.length === 0 && (
+        <Card className="border border-gray-200">
+          <CardContent className="p-4 text-sm text-gray-600">
+            No se encontraron programas en esta categoría.
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !error && programs.map((program) => (
         <Card key={program.id} className="border border-gray-200 hover:border-amber-300 transition-all duration-200">
           <CardContent className="p-0">
             {/* Program Header Button */}
@@ -373,39 +291,38 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
                   </div>
                 )}
 
-                {/* Program Details */}
+                {/* Program Details (Resumen enriquecido) */}
                 <div className="space-y-3">
                   <div>
-                    <h4 className="font-semibold text-gray-800 text-sm mb-1">Coordinador</h4>
-                    <p className="text-sm text-gray-600">{program.coordinator}</p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-800 text-sm mb-1">Descripción</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">{program.description}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <h4 className="font-semibold text-gray-800 text-sm mb-1">Duración</h4>
-                      <p className="text-sm text-gray-600">{program.duration}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800 text-sm mb-1">Modalidad</h4>
-                      <p className="text-sm text-gray-600">{program.modality}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-800 text-sm mb-2">Requisitos</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      {program.requirements.map((req, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-amber-500 mt-1">•</span>
-                          <span>{req}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <h4 className="font-semibold text-gray-800 text-sm mb-1">Resumen</h4>
+                    {(() => {
+                      const { about, duration, email, phone } = extractSummaryParts(program.description || "")
+                      const hasContact = email || phone
+                      return (
+                        <ul className="text-sm text-gray-700 space-y-1 list-disc pl-4">
+                          <li>
+                            <span className="font-medium text-gray-800">De qué va: </span>
+                            <span className="text-gray-700">{about}</span>
+                          </li>
+                          {duration && (
+                            <li>
+                              <span className="font-medium text-gray-800">Duración: </span>
+                              <span className="text-gray-700">{duration}</span>
+                            </li>
+                          )}
+                          {hasContact && (
+                            <li>
+                              <span className="font-medium text-gray-800">Contacto: </span>
+                              <span className="text-gray-700">
+                                {email && <span className="break-all">{email}</span>}
+                                {email && phone && <span> | </span>}
+                                {phone && <span>{phone}</span>}
+                              </span>
+                            </li>
+                          )}
+                        </ul>
+                      )
+                    })()}
                   </div>
 
                   {/* Action Buttons */}
@@ -413,7 +330,7 @@ export default function ProgramButtons({ programType, onProgramSelect }: Program
                     <Button
                       size="sm"
                       className="bg-amber-600 hover:bg-amber-700 text-white flex-1 text-xs sm:text-sm"
-                      onClick={() => onProgramSelect(program)}
+                      onClick={() => onProgramSelectTitle(program.name)}
                     >
                       <GraduationCap className="h-4 w-4 mr-1 sm:mr-2" />
                       Más información

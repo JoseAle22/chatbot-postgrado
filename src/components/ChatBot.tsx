@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import ProgramButtons from "./ProgramButtons"
 import { LearningSystem } from "@/lib/learning-system"
 import { AIService } from "@/lib/ai-service"
@@ -92,18 +94,7 @@ interface Message {
   confidence?: number
 }
 
-interface Program {
-  id: string
-  name: string
-  type: "doctorado" | "maestria" | "especializacion"
-  coordinator: string
-  description: string
-  requirements: string[]
-  duration: string
-  modality: string
-  icon: string
-  image?: string
-}
+// Program interface no longer needed here; ProgramButtons reports selection by title only.
 
 interface ChatBotProps {
   isModal?: boolean
@@ -206,43 +197,9 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     setChatState("conversation")
   }
 
-  const handleProgramSelect = (program: Program) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: `Más información sobre ${program.name}`,
-    }
-
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: `Excelente elección. El ${program.name} es coordinado por ${program.coordinator}. 
-
-INFORMACIÓN DETALLADA:
-${program.description}
-
-DURACIÓN: ${program.duration}
-MODALIDAD: ${program.modality}
-
-REQUISITOS PRINCIPALES:
-${program.requirements.map((req, index) => `${index + 1}. ${req}`).join("\n")}
-
-DOCUMENTOS NECESARIOS:
-1. Dos (2) fotografías tamaño carnet
-2. Copia de cédula ampliada al 150%
-3. Fondo Negro certificado del título de pregrado
-4. Notas certificadas de pregrado
-5. Curriculum Vitae con documentos probatorios
-6. Comprobante de pago del arancel
-
-CONTACTO DIRECTO:
-📧 coordinacion.postgrado@ujap.edu.ve
-📞 +58 241 871 0903
-
-¿Te gustaría conocer más detalles sobre algún aspecto específico del programa?`,
-    }
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage])
+  const handleProgramSelectTitle = (title: string) => {
+    const question = `Quiero más información detallada del programa: ${title}.`
+    void processUserMessage(question)
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
@@ -272,7 +229,7 @@ CONTACTO DIRECTO:
       if (!API_KEY)
         throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
-      const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).`
+  const systemPrompt = `Eres UJAPITO, asistente virtual de la Dirección de Postgrado UJAP. Responde en español con buena ortografía y acentos. Usa Markdown con párrafos separados, listas con guiones o números, y **negritas** para resaltar. Sé claro y ordenado, y no inventes información.`
 
       // Preparar el historial de conversación
       const contents = [
@@ -417,6 +374,21 @@ CONTACTO DIRECTO:
     return explicitPhrases.some((phrase) => lowerMessage.includes(phrase));
   }
 
+  // Identificar consultas relacionadas con programas (para sesgar la búsqueda a la categoría 'programs')
+  const isProgramQuery = (message: string): boolean => {
+    const text = (message || "").toLowerCase()
+    const tokens = [
+      "programa",
+      "programas",
+      "maestria",
+      "maestría",
+      "doctorado",
+      "especializacion",
+      "especialización",
+    ]
+    return tokens.some((t) => text.includes(t))
+  }
+
   const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
     try {
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)))
@@ -459,12 +431,42 @@ CONTACTO DIRECTO:
         return
       }
 
-      const knowledgeResults = await LearningSystem.searchKnowledge(messageText)
+      // Si parece una consulta de programa, buscar primero en la categoría 'programs'
+      let knowledgeResults = await LearningSystem.searchKnowledge(
+        messageText,
+        isProgramQuery(messageText) ? "programs" : undefined,
+      )
+      if (knowledgeResults.length === 0 && isProgramQuery(messageText)) {
+        // Fallback a búsqueda general si no hay coincidencias en la categoría 'programs'
+        knowledgeResults = await LearningSystem.searchKnowledge(messageText)
+      }
       let response = ""
 
       if (knowledgeResults.length > 0) {
         const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
-        const prompt = `Responde de forma concisa y directa a la "Pregunta original" utilizando únicamente la "Información encontrada". No añadas información que no haya sido solicitada. **Utiliza formato Markdown para las listas (usando guiones - o asteriscos *) y para resaltar texto importante (usando **negrita**)**. Responde como UJAPITO, asistente de postgrado.\n\nInformación encontrada:\n${allAnswers}\n\nPregunta original: "${messageText}"`
+        const prompt = `Eres UJAPITO, asistente de la Dirección de Postgrado UJAP. Lee cuidadosamente la siguiente "Información encontrada" y responde a la "Pregunta original" en español, de forma clara, bien ordenada y con acentos correctos. 
+
+Requisitos de formato (usa Markdown):
+- Título corto en una línea si aplica (opcional)
+- Párrafos separados por líneas en blanco
+- Listas con guiones (-) o números cuando corresponda
+- Resalta conceptos clave con **negrita**, no abuses
+- Mantén el foco en la pregunta actual, sin mezclar otros temas
+
+Estructura sugerida cuando aplique (adáptala al contenido disponible):
+1) Descripción breve
+2) Requisitos (si existen)
+3) Duración y modalidad (si existen)
+4) Costos/aranceles (si existen)
+5) Documentos/inscripción (si existen)
+6) Contacto (si existen correos o teléfonos)
+
+No inventes datos que no estén en la información.
+
+Información encontrada:
+${allAnswers}
+
+Pregunta original: "${messageText}"`
         response = await callGeminiAPI(prompt, updatedMessagesWithUser)
       } else {
         console.log("No se encontró conocimiento. Enviando a IA:", messageText)
@@ -584,9 +586,9 @@ CONTACTO DIRECTO:
                           : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
                     }`}
                   >
-                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words font-medium">
-                      {message.content}
-                    </p>
+                    <div className="prose prose-sm md:prose-base max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-strong:font-semibold prose-headings:mt-3 prose-headings:mb-2 prose-h4:text-[1rem] prose-h5:text-[0.95rem]">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                    </div>
                   </div>
 
                   {message.role === "assistant" && !message.error && !message.showButtons && (
@@ -676,7 +678,7 @@ CONTACTO DIRECTO:
                     <div className="w-full">
                       <ProgramButtons
                         programType={message.showButtons === "programs-clinicos" ? "clinicos" : "no-clinicos"}
-                        onProgramSelect={handleProgramSelect}
+                        onProgramSelectTitle={handleProgramSelectTitle}
                       />
                     </div>
                   )}

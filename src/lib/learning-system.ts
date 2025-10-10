@@ -82,7 +82,11 @@ export class LearningSystem {
         }
         const results = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, queries);
 
-        const normalizedQuery = normalizeText(query);
+        const normalizedQuery = normalizeText(query || "");
+        // Si no hay query, devolver todos los items (respetando categoría y activos)
+        if (!normalizedQuery.trim()) {
+          return results.documents as unknown as KnowledgeItem[];
+        }
         const queryWords = normalizedQuery.split(" ").filter(Boolean);
 
         // Ponderar resultados: exactos primero, luego parciales
@@ -124,6 +128,20 @@ export class LearningSystem {
         return [];
       }
     }
+
+  // List active knowledge items by category (no query filtering)
+  static async listKnowledgeByCategory(category: string): Promise<KnowledgeItem[]> {
+    try {
+      const results = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, [
+        Query.equal("is_active", true),
+        Query.equal("category", category),
+      ])
+      return results.documents as unknown as KnowledgeItem[]
+    } catch (error) {
+      console.error("Error listing knowledge by category:", error)
+      return []
+    }
+  }
 
   // Add new knowledge item
   static async addKnowledge(
