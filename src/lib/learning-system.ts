@@ -66,33 +66,79 @@ export class LearningSystem {
   }
 
   // Search knowledge base for similar questions
-  static async searchKnowledge(query: string, category?: string): Promise<KnowledgeItem[]> {
-    try {
-      const queries = [Query.equal("is_active", true)]
+    static async searchKnowledge(query: string, category?: string): Promise<KnowledgeItem[]> {
+      // Normaliza texto: minúsculas, elimina tildes y signos de puntuación
+      const normalizeText = (text: string) =>
+        text
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") // Elimina tildes
+          .replace(/[^\w\s]/gi, ""); // Elimina signos de puntuación
 
-      if (category) {
-        queries.push(Query.equal("category", category))
+      try {
+        const queries = [Query.equal("is_active", true)];
+        if (category) {
+          queries.push(Query.equal("category", category));
+        }
+        const results = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, queries);
+
+        const normalizedQuery = normalizeText(query || "");
+        // Si no hay query, devolver todos los items (respetando categoría y activos)
+        if (!normalizedQuery.trim()) {
+          return results.documents as unknown as KnowledgeItem[];
+        }
+        const queryWords = normalizedQuery.split(" ").filter(Boolean);
+
+        // Ponderar resultados: exactos primero, luego parciales
+        let exactMatches: any[] = [];
+        let partialMatches: any[] = [];
+
+        for (const item of results.documents) {
+          const keywords = (item.keywords || []).map((kw: string) => normalizeText(kw));
+          const normalizedQuestion = normalizeText(item.question);
+          const normalizedAnswer = normalizeText(item.answer || "");
+
+          // Coincidencia exacta por frase completa en pregunta, respuesta o keywords
+          if (
+            normalizedQuestion === normalizedQuery ||
+            normalizedAnswer === normalizedQuery ||
+            keywords.includes(normalizedQuery)
+          ) {
+            exactMatches.push(item);
+            continue;
+          }
+
+          // Coincidencia parcial: alguna palabra del query está incluida en pregunta, respuesta o keywords
+          const partial = queryWords.some(
+            (word) =>
+              normalizedQuestion.includes(word) ||
+              normalizedAnswer.includes(word) ||
+              keywords.some((keyword: string) => keyword.includes(word))
+          );
+          if (partial) {
+            partialMatches.push(item);
+          }
+        }
+
+        // Devuelve primero los exactos, luego los parciales
+        const filteredResults = [...exactMatches, ...partialMatches];
+        return filteredResults as unknown as KnowledgeItem[];
+      } catch (error) {
+        console.error("Error searching knowledge base:", error);
+        return [];
       }
+    }
 
-      // Search by keywords (this is a simplified approach)
-      const results = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, queries)
-
-      // Filter results by keyword matching (client-side for now)
-      const queryWords = query.toLowerCase().split(" ")
-      const filteredResults = results.documents.filter((item: any) => {
-        const keywords = item.keywords || []
-        const questionWords = item.question.toLowerCase().split(" ")
-
-        return queryWords.some(
-          (word) =>
-            keywords.some((keyword: string) => keyword.toLowerCase().includes(word)) ||
-            questionWords.some((qWord: string) => qWord.includes(word)),
-        )
-      })
-
-      return filteredResults as unknown as KnowledgeItem[]
+  // List active knowledge items by category (no query filtering)
+  static async listKnowledgeByCategory(category: string): Promise<KnowledgeItem[]> {
+    try {
+      const results = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, [
+        Query.equal("is_active", true),
+        Query.equal("category", category),
+      ])
+      return results.documents as unknown as KnowledgeItem[]
     } catch (error) {
-      console.error("Error searching knowledge base:", error)
+      console.error("Error listing knowledge by category:", error)
       return []
     }
   }

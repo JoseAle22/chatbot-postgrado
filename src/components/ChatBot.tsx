@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import ProgramButtons from "./ProgramButtons"
 import { LearningSystem } from "@/lib/learning-system"
 import { AIService } from "@/lib/ai-service"
@@ -92,18 +94,7 @@ interface Message {
   confidence?: number
 }
 
-interface Program {
-  id: string
-  name: string
-  type: "doctorado" | "maestria" | "especializacion"
-  coordinator: string
-  description: string
-  requirements: string[]
-  duration: string
-  modality: string
-  icon: string
-  image?: string
-}
+// Program interface no longer needed here; ProgramButtons reports selection by title only.
 
 interface ChatBotProps {
   isModal?: boolean
@@ -115,7 +106,6 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
-  const [extraContext, setExtraContext] = useState("")
   const [, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
   const [conversationId, setConversationId] = useState<string>("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -151,13 +141,6 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     }
   }, [messages])
 
-  // Cargar contexto.txt al iniciar
-  useEffect(() => {
-    fetch("/contexto.txt")
-      .then((res) => res.text())
-      .then((data) => setExtraContext(data))
-      .catch((err) => console.error("Error cargando contexto.txt:", err))
-  }, [])
 
   const handleInitialResponse = (response: "yes" | "programs" | "other") => {
     let userMessage: Message
@@ -214,43 +197,9 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     setChatState("conversation")
   }
 
-  const handleProgramSelect = (program: Program) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: `Más información sobre ${program.name}`,
-    }
-
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: `Excelente elección. El ${program.name} es coordinado por ${program.coordinator}. 
-
-INFORMACIÓN DETALLADA:
-${program.description}
-
-DURACIÓN: ${program.duration}
-MODALIDAD: ${program.modality}
-
-REQUISITOS PRINCIPALES:
-${program.requirements.map((req, index) => `${index + 1}. ${req}`).join("\n")}
-
-DOCUMENTOS NECESARIOS:
-1. Dos (2) fotografías tamaño carnet
-2. Copia de cédula ampliada al 150%
-3. Fondo Negro certificado del título de pregrado
-4. Notas certificadas de pregrado
-5. Curriculum Vitae con documentos probatorios
-6. Comprobante de pago del arancel
-
-CONTACTO DIRECTO:
-📧 coordinacion.postgrado@ujap.edu.ve
-📞 +58 241 871 0903
-
-¿Te gustaría conocer más detalles sobre algún aspecto específico del programa?`,
-    }
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage])
+  const handleProgramSelectTitle = (title: string) => {
+    const question = `Quiero más información detallada del programa: ${title}.`
+    void processUserMessage(question)
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
@@ -280,71 +229,7 @@ CONTACTO DIRECTO:
       if (!API_KEY)
         throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
 
-      const systemPrompt = `Eres un asistente virtual llamado Ujapito especializado en la Dirección de Postgrado de la Universidad José Antonio Páez (UJAP).
-
-${extraContext}
-
-Tu función es ayudar a estudiantes, profesionales y personas interesadas con información sobre:
-
-PROGRAMAS ACADÉMICOS:
-- Doctorados: Ciencias de la Educación, Orientación
-- Maestrías: Gerencia de la Comunicación Organizacional, Gerencia y Tecnología de la Información, Educación para el Desarrollo Sustentable
-- Especializaciones: Administración de Empresas, Automatización Industrial, Derecho Administrativo, Derecho Procesal Civil, Docencia en Educación Superior, Gerencia de Control de Calidad e Inspección de Obras, Gestión Aduanera y Tributaria, Gestión y Control de las Finanzas Públicas, Telecomunicaciones
-
-INFORMACIÓN DE CONTACTO:
-- Email: coordinacion.postgrado@ujap.edu.ve
-- Teléfono: +58 241 871 0903
-- UJAP General: +58 241 871 4240 ext. 1260
-- Ubicación: Municipio San Diego, Calle Nº 3. Urb. Yuma II, Valencia, Edo. Carabobo
-- Instagram: @ujap_oficial
-
-AUTORIDADES:
-- Directora General: Dra. Haydee Páez (también Coordinadora del Doctorado en Ciencias de la Educación)
-- Dra. Omaira Lessire de González: Coordinadora del Doctorado en Orientación
-- Dra. Thania Oberto: Coordinadora de Maestría en Gerencia de la Comunicación Organizacional y varias especializaciones
-- MSc. Wilmer Sanz: Coordinador de Especialización en Automatización Industrial
-- MSc. Susan León: Coordinadora de Maestría en Gerencia y Tecnología de la Información y Especialización en Docencia
-- MSc. Ledys Herrera: Coordinadora de Especialización en Derecho Procesal Civil
-- Esp. Federico Estaba: Coordinador de Especialización en Gestión y Control de las Finanzas Públicas
-- Esp. Adriana Materán: Coordinadora de Especialización en Odontopediatría
-
-INFORMACIÓN INSTITUCIONAL:
-- La UJAP es una universidad privada ubicada en Valencia, Estado Carabobo, Venezuela
-- Ofrece formación de alto nivel con enfoque interdisciplinario, multidisciplinario y transdisciplinario
-- Cuenta con infraestructura moderna, biblioteca, laboratorios, plataformas virtuales
-- Promueve la excelencia, innovación e internacionalización.
-
-DOCUMENTOS Y REQUISITOS:
-- Dos (2) fotografías tamaño carnet.
-- Copia de la cédula de identidad ampliada al 150%.
-- Fondo Negro certificado del titulo de pregrado.
-- Notas certificadas de las calificaciones obtenidas en los estudios de pregrado.
-- Curriculum Vitae con documentos probatorios para la aplicacion del Baremo.
-- Comprobante de pago del arancel de admision.
-- En el doctorado adicionalmente debera consignar: fondo negro del titulo de magister certificado, dos referencias academicas, propuesta del tema de Tesis Doctoral y presentar una entrevista.
-
-Esos Documentos deben ser consignados en la oficina de Control de Estudios en el respectivo sobre de inscripcion (se adquiere en el centro de copiado).
-
-MODALIDADES DE PAGO:
-Cuentas Autorizadas para los pagos:
-Cuentas corrientes a nombre de: Sociedad Civil Universidad José Antonio Páez, RIF: J-30400858-9.
-
-Banco Nacional de Credito 0191-0085-50-2185041363
-Banco Banesco 0134-0025-34-0251066811
-Banco Provincial 0108-0082-08-0100003985
-Banco de Venezuela 0102-0114-48-0001031353
-Banco Nacional de Crédito(Dolares) 0191-0127-43-2300010599
-Banco Nacional de Crédito(Euros) 0191-0127-44-2400000188
-
-FORMATO DE RESPUESTA:
-- Responde siempre en texto claro y ordenado.
-- No uses asteriscos (*), guiones (-) ni símbolos innecesarios.
-- Si necesitas listas, usa numeración simple (1., 2., 3.) o saltos de línea.
-- Separa las secciones con títulos en mayúsculas.
-- No uses Markdown ni código.
-- Si no sabes la respuesta, di "Lo siento, no tengo esa información."
-- Mantén un tono profesional, amable y servicial.
-- Los nombres de las autoridades y coordinadores los debes decir respectivamente cuando menciones las Maestrias, Especializaciones y Doctorados.`
+  const systemPrompt = `Eres UJAPITO, asistente virtual de la Dirección de Postgrado UJAP. Responde en español con buena ortografía y acentos. Usa Markdown con párrafos separados, listas con guiones o números, y **negritas** para resaltar. Sé claro y ordenado, y no inventes información.`
 
       // Preparar el historial de conversación
       const contents = [
@@ -359,18 +244,33 @@ FORMATO DE RESPUESTA:
       ]
 
       // Agregar historial de conversación (últimos 10 mensajes para no exceder límites)
-      const recentHistory = conversationHistory.slice(-10)
+      // Seleccionar los 20 mensajes más relevantes (preguntas largas, respuestas largas, o que contengan palabras clave)
+      const KEYWORDS = ["programa", "maestría", "doctorado", "especialización", "requisito", "documento", "coordinador", "autoridad", "inscripción", "arancel", "pago", "modalidad"];
+  const isRelevant = (msg: Message) => {
+        const text = msg.content?.toLowerCase() || "";
+        return text.length > 60 || KEYWORDS.some(k => text.includes(k));
+      };
+      // Filtra los relevantes y si hay menos de 20, completa con los últimos
+      let relevantHistory = conversationHistory.filter(isRelevant);
+      if (relevantHistory.length < 20) {
+        const missing = 20 - relevantHistory.length;
+        const lastMessages = conversationHistory.slice(-missing);
+        // Evita duplicados
+        relevantHistory = [...relevantHistory, ...lastMessages.filter(m => !relevantHistory.includes(m))];
+      }
+      // Solo los últimos 20 relevantes
+      const recentHistory = relevantHistory.slice(-20);
       for (const msg of recentHistory) {
         if (msg.role === "user") {
           contents.push({
             role: "user",
             parts: [{ text: msg.content }],
-          })
+          });
         } else if (msg.role === "assistant" && !msg.error) {
           contents.push({
             role: "model",
             parts: [{ text: msg.content }],
-          })
+          });
         }
       }
 
@@ -393,7 +293,7 @@ FORMATO DE RESPUESTA:
               temperature: 0.7,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 1024,
+              maxOutputTokens: 4096,
             },
             safetySettings: [
               {
@@ -425,14 +325,13 @@ FORMATO DE RESPUESTA:
       const data = await response.json()
       const geminiResponse =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
-
+      const safeGeminiResponse = geminiResponse.slice(0, 9900)
       // Save fallback response to learning system
       if (conversationId) {
-        await LearningSystem.saveMessage(conversationId, "user", userMessage)
-        await LearningSystem.saveMessage(conversationId, "assistant", geminiResponse)
+        await LearningSystem.saveMessage(conversationId, "user", userMessage.slice(0, 9900))
+        await LearningSystem.saveMessage(conversationId, "assistant", safeGeminiResponse)
       }
-
-      return geminiResponse
+      return safeGeminiResponse
     }
   }
 
@@ -475,6 +374,21 @@ FORMATO DE RESPUESTA:
     return explicitPhrases.some((phrase) => lowerMessage.includes(phrase));
   }
 
+  // Identificar consultas relacionadas con programas (para sesgar la búsqueda a la categoría 'programs')
+  const isProgramQuery = (message: string): boolean => {
+    const text = (message || "").toLowerCase()
+    const tokens = [
+      "programa",
+      "programas",
+      "maestria",
+      "maestría",
+      "doctorado",
+      "especializacion",
+      "especialización",
+    ]
+    return tokens.some((t) => text.includes(t))
+  }
+
   const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
     try {
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)))
@@ -493,102 +407,103 @@ FORMATO DE RESPUESTA:
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-
+  const processUserMessage = async (messageText: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: messageText,
     }
 
-    setMessages((prev) => [...prev, userMessage])
-    const currentInput = input
-    setInput("")
+    const updatedMessagesWithUser = [...messages, userMessage]
+    setMessages(updatedMessagesWithUser)
     setIsLoading(true)
 
     try {
-      if (detectProgramIntent(currentInput)) {
+      if (detectProgramIntent(messageText)) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
           showButtons: "program-type",
         }
-        setMessages((prev) => [...prev, assistantMessage])
+        setMessages(prev => [...prev, assistantMessage])
         setChatState("program-selection")
-        setIsLoading(false)
         return
       }
 
-      // Buscar en la base de datos de conocimiento
-      const knowledgeResults = await LearningSystem.searchKnowledge(currentInput)
+      // Si parece una consulta de programa, buscar primero en la categoría 'programs'
+      let knowledgeResults = await LearningSystem.searchKnowledge(
+        messageText,
+        isProgramQuery(messageText) ? "programs" : undefined,
+      )
+      if (knowledgeResults.length === 0 && isProgramQuery(messageText)) {
+        // Fallback a búsqueda general si no hay coincidencias en la categoría 'programs'
+        knowledgeResults = await LearningSystem.searchKnowledge(messageText)
+      }
+      let response = ""
+
       if (knowledgeResults.length > 0) {
-        const bestMatch = knowledgeResults[0]
-        // Pedir a Gemini que redacte la respuesta encontrada
-        const prompt = `Redacta la siguiente información de forma clara, profesional y personalizada para el usuario. Responde como UJAPITO, asistente de postgrado. Información encontrada: "${bestMatch.answer}". Pregunta original: "${currentInput}".`
-        const response = await callGeminiAPI(prompt, messages)
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: cleanResponse(response),
-          confidence: 1.0,
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-        setApiStatus("working")
-        setIsLoading(false)
-        return
+        const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
+        const prompt = `Eres UJAPITO, asistente de la Dirección de Postgrado UJAP. Lee cuidadosamente la siguiente "Información encontrada" y responde a la "Pregunta original" en español, de forma clara, bien ordenada y con acentos correctos. 
+
+Requisitos de formato (usa Markdown):
+- Título corto en una línea si aplica (opcional)
+- Párrafos separados por líneas en blanco
+- Listas con guiones (-) o números cuando corresponda
+- Resalta conceptos clave con **negrita**, no abuses
+- Mantén el foco en la pregunta actual, sin mezclar otros temas
+
+Estructura sugerida cuando aplique (adáptala al contenido disponible):
+1) Descripción breve
+2) Requisitos (si existen)
+3) Duración y modalidad (si existen)
+4) Costos/aranceles (si existen)
+5) Documentos/inscripción (si existen)
+6) Contacto (si existen correos o teléfonos)
+
+No inventes datos que no estén en la información.
+
+Información encontrada:
+${allAnswers}
+
+Pregunta original: "${messageText}"`
+        response = await callGeminiAPI(prompt, updatedMessagesWithUser)
+      } else {
+        console.log("No se encontró conocimiento. Enviando a IA:", messageText)
+        response = await callGeminiAPI(messageText, updatedMessagesWithUser)
       }
 
-      console.log("Enviando mensaje a sistema de IA:", currentInput)
-
-      const response = await callGeminiAPI(currentInput, messages)
-
+      const safeContent = cleanResponse(response).slice(0, 9900)
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: cleanResponse(response),
-        confidence: 0.8,
+        content: safeContent,
+        confidence: knowledgeResults.length > 0 ? 1.0 : 0.5,
       }
-
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages(prev => [...prev, assistantMessage])
       setApiStatus("working")
+
     } catch (error) {
-      console.error("Error completo:", error)
+      console.error("Error completo en processUserMessage:", error)
       setApiStatus("error")
-
-      // Determinar el tipo de error y mostrar mensaje apropiado
-      let errorMessage = "Lo siento, ha ocurrido un error inesperado."
-
-      if (error instanceof Error) {
-        if (error.message.includes("API key")) {
-          errorMessage =
-            "⚠️ Configuración requerida: La API key de Google Gemini no está configurada correctamente.\n\n📋 Pasos para configurar:\n1. Crea un archivo `.env.local` en la raíz del proyecto\n2. Agrega: `VITE_GOOGLE_GENERATIVE_AI_API_KEY=tu_api_key`\n3. Obtén tu API key en: https://makersuite.google.com/app/apikey\n4. Reinicia el servidor con `npm run dev`"
-        } else if (error.message.includes("403") || error.message.includes("401")) {
-          errorMessage =
-            "🔑 Error de autenticación: La API key no es válida o ha expirado.\n\n✅ Soluciones:\n- Verifica que la API key sea correcta\n- Genera una nueva API key en Google AI Studio\n- Asegúrate de que la API esté habilitada"
-        } else if (error.message.includes("429")) {
-          errorMessage =
-            "⏱️ Límite alcanzado: Se ha excedido el límite de la API.\n\n⏰ Intenta:\n- Esperar unos minutos antes de volver a intentar\n- Verificar tu cuota en Google AI Studio"
-        } else if (error.message.includes("400")) {
-          errorMessage =
-            "📝 Error en la solicitud: Hay un problema con el formato de la consulta.\n\n🔄 Intenta:\n- Reformular tu pregunta\n- Usar un mensaje más corto"
-        } else {
-          errorMessage = `❌ Error: ${error.message}\n\n📞 Contacto directo:\n📧 coordinacion.postgrado@ujap.edu.ve\n📞 +582418710903`
-        }
-      }
-
       const errorResponseMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: errorMessage,
+        content: "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud.",
         error: true,
       }
-      setMessages((prev) => [...prev, errorResponseMessage])
+      setMessages(prev => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    const currentInput = input
+    setInput("")
+    await processUserMessage(currentInput)
   }
 
   const containerClass = isModal
@@ -671,9 +586,9 @@ FORMATO DE RESPUESTA:
                           : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
                     }`}
                   >
-                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words font-medium">
-                      {message.content}
-                    </p>
+                    <div className="prose prose-sm md:prose-base max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-strong:font-semibold prose-headings:mt-3 prose-headings:mb-2 prose-h4:text-[1rem] prose-h5:text-[0.95rem]">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                    </div>
                   </div>
 
                   {message.role === "assistant" && !message.error && !message.showButtons && (
@@ -715,11 +630,25 @@ FORMATO DE RESPUESTA:
                         🎓 Información sobre programas
                       </Button>
                       <Button
-                        onClick={() => handleInitialResponse("other")}
+                        onClick={() => processUserMessage("¿Cuáles son los documentos necesarios para la inscripción?")}
                         className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
                         size="sm"
                       >
-                        💬 Tengo otra consulta
+                        📄 Documentos para inscripción
+                      </Button>
+                      <Button
+                        onClick={() => processUserMessage("¿Cuáles son las cuentas bancarias para los pagos?")}
+                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
+                        size="sm"
+                      >
+                        💳 Cuentas bancarias
+                      </Button>
+                      <Button
+                        onClick={() => processUserMessage("¿Cuáles son los correos de contacto?")}
+                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white justify-start"
+                        size="sm"
+                      >
+                        📧 Correos de contacto
                       </Button>
                     </div>
                   )}
@@ -749,7 +678,7 @@ FORMATO DE RESPUESTA:
                     <div className="w-full">
                       <ProgramButtons
                         programType={message.showButtons === "programs-clinicos" ? "clinicos" : "no-clinicos"}
-                        onProgramSelect={handleProgramSelect}
+                        onProgramSelectTitle={handleProgramSelectTitle}
                       />
                     </div>
                   )}
