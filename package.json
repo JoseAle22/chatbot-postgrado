@@ -10,9 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-  "@tailwindcss/typography": "^0.5.15",
-  "react-markdown": "^9.0.1",
-  "remark-gfm": "^4.0.0",
     "@ai-sdk/google": "^0.0.52",
     "@google/genai": "^1.21.0",
     "@radix-ui/react-avatar": "^1.1.1",
@@ -22,6 +19,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@tailwindcss/typography": "^0.5.15",
     "ai": "^3.4.33",
     "appwrite": "^20.1.0",
     "class-variance-authority": "^0.7.1",
@@ -29,9 +27,11 @@
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^9.1.0",
     "react-router": "^7.9.3",
     "react-router-dom": "^7.9.3",
     "recharts": "^3.2.1",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7"
   },
