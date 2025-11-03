@@ -205,7 +205,7 @@ export function KnowledgeManager() {
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona categoría" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         {categories.map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {categoryLabels[cat]}
