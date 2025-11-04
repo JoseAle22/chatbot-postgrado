@@ -11,7 +11,6 @@ import ProgramButtons from "./ProgramButtons"
 import { LearningSystem } from "@/lib/learning-system"
 import { AIService } from "@/lib/ai-service"
 
-// SVG Icon Components
 const Send = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m5 12 7-7 7 7M12 5v14" />
@@ -79,7 +78,7 @@ const BookOpen = ({ className }: { className?: string }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 16.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13M0 13.5h24v7.5H0z"
     />
   </svg>
 )
@@ -92,9 +91,8 @@ interface Message {
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
   feedback?: "positive" | "negative"
   confidence?: number
+  isStreaming?: boolean
 }
-
-// Program interface no longer needed here; ProgramButtons reports selection by title only.
 
 interface ChatBotProps {
   isModal?: boolean
@@ -110,6 +108,11 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [conversationId, setConversationId] = useState<string>("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const streamingMessageRef = useRef<string>("")
+  const textBufferRef = useRef<string>("")
+  const displayedTextRef = useRef<string>("")
+  const streamIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const currentMessageIdRef = useRef<string>("")
 
   useEffect(() => {
     const initialMessage: Message = {
@@ -126,9 +129,9 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
 
   const initializeConversation = async () => {
     try {
-  const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  const userId = "anonymous" // Puedes cambiar esto por el ID real si tienes autenticación
-  const newConversationId = await LearningSystem.saveConversation(sessionId, userId)
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const userId = "anonymous"
+      const newConversationId = await LearningSystem.saveConversation(sessionId, userId)
       setConversationId(newConversationId)
     } catch (error) {
       console.error("Error initializing conversation:", error)
@@ -140,7 +143,6 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
     }
   }, [messages])
-
 
   const handleInitialResponse = (response: "yes" | "programs" | "other") => {
     let userMessage: Message
@@ -202,145 +204,7 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     void processUserMessage(question)
   }
 
-  const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
-    try {
-      // Use the enhanced AI service
-      const response = await AIService.generateResponse(userMessage, conversationHistory)
-
-      // Save messages to learning system
-      if (conversationId) {
-        await LearningSystem.saveMessage(conversationId, "user", userMessage, response.intent)
-        await LearningSystem.saveMessage(
-          conversationId,
-          "assistant",
-          response.content,
-          response.intent,
-          response.confidence,
-          response.responseTime,
-        )
-      }
-
-      return response.content
-    } catch (error) {
-      console.error("Error in AI service:", error)
-
-      // Fallback to original Gemini implementation
-      const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
-      if (!API_KEY)
-        throw new Error("API key no configurada. Agrega VITE_GOOGLE_GENERATIVE_AI_API_KEY a tu archivo .env.local")
-
-  const systemPrompt = `Eres UJAPITO, asistente virtual de la Dirección de Postgrado UJAP. Responde en español con buena ortografía y acentos. Usa Markdown con párrafos separados, listas con guiones o números, y **negritas** para resaltar. Sé claro y ordenado, y no inventes información.`
-
-      // Preparar el historial de conversación
-      const contents = [
-        {
-          role: "user",
-          parts: [{ text: systemPrompt }],
-        },
-        {
-          role: "model",
-          parts: [{ text: "Entendido. Soy tu asistente especializado en la Dirección de Postgrado UJAP." }],
-        },
-      ]
-
-      // Agregar historial de conversación (últimos 10 mensajes para no exceder límites)
-      // Seleccionar los 20 mensajes más relevantes (preguntas largas, respuestas largas, o que contengan palabras clave)
-      const KEYWORDS = ["programa", "maestría", "doctorado", "especialización", "requisito", "documento", "coordinador", "autoridad", "inscripción", "arancel", "pago", "modalidad"];
-  const isRelevant = (msg: Message) => {
-        const text = msg.content?.toLowerCase() || "";
-        return text.length > 60 || KEYWORDS.some(k => text.includes(k));
-      };
-      // Filtra los relevantes y si hay menos de 20, completa con los últimos
-      let relevantHistory = conversationHistory.filter(isRelevant);
-      if (relevantHistory.length < 20) {
-        const missing = 20 - relevantHistory.length;
-        const lastMessages = conversationHistory.slice(-missing);
-        // Evita duplicados
-        relevantHistory = [...relevantHistory, ...lastMessages.filter(m => !relevantHistory.includes(m))];
-      }
-      // Solo los últimos 20 relevantes
-      const recentHistory = relevantHistory.slice(-20);
-      for (const msg of recentHistory) {
-        if (msg.role === "user") {
-          contents.push({
-            role: "user",
-            parts: [{ text: msg.content }],
-          });
-        } else if (msg.role === "assistant" && !msg.error) {
-          contents.push({
-            role: "model",
-            parts: [{ text: msg.content }],
-          });
-        }
-      }
-
-      // Agregar el mensaje actual
-      contents.push({
-        role: "user",
-        parts: [{ text: userMessage }],
-      })
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 4096,
-            },
-            safetySettings: [
-              {
-                category: "HARM_CATEGORY_HARASSMENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE",
-              },
-              {
-                category: "HARM_CATEGORY_HATE_SPEECH",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE",
-              },
-              {
-                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE",
-              },
-              {
-                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE",
-              },
-            ],
-          }),
-        },
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`)
-      }
-
-      const data = await response.json()
-      const geminiResponse =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta."
-      const safeGeminiResponse = geminiResponse.slice(0, 9900)
-      // Save fallback response to learning system
-      if (conversationId) {
-        await LearningSystem.saveMessage(conversationId, "user", userMessage.slice(0, 9900))
-        await LearningSystem.saveMessage(conversationId, "assistant", safeGeminiResponse)
-      }
-      return safeGeminiResponse
-    }
-  }
-
-  const cleanResponse = (text: string) => {
-    return AIService.cleanResponse(text)
-  }
-
   const detectProgramIntent = (message: string): boolean => {
-    // Frases explícitas para mostrar botones de programas
     const explicitPhrases = [
       "información de programas",
       "informacion de programas",
@@ -351,7 +215,7 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       "qué especializaciones hay",
       "que especializaciones hay",
       "qué maestrías hay",
-      "que maestrias hay",
+      "que maestrías hay",
       "qué doctorados hay",
       "que doctorados hay",
       "oferta académica",
@@ -368,24 +232,15 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       "lista de programas",
       "lista de especializaciones",
       "lista de maestrías",
-      "lista de doctorados"
-    ];
-    const lowerMessage = message.toLowerCase();
-    return explicitPhrases.some((phrase) => lowerMessage.includes(phrase));
+      "lista de doctorados",
+    ]
+    const lowerMessage = message.toLowerCase()
+    return explicitPhrases.some((phrase) => lowerMessage.includes(phrase))
   }
 
-  // Identificar consultas relacionadas con programas (para sesgar la búsqueda a la categoría 'programs')
   const isProgramQuery = (message: string): boolean => {
     const text = (message || "").toLowerCase()
-    const tokens = [
-      "programa",
-      "programas",
-      "maestria",
-      "maestría",
-      "doctorado",
-      "especializacion",
-      "especialización",
-    ]
+    const tokens = ["programa", "programas", "maestria", "maestría", "doctorado", "especializacion", "especialización"]
     return tokens.some((t) => text.includes(t))
   }
 
@@ -408,6 +263,13 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   }
 
   const processUserMessage = async (messageText: string) => {
+    textBufferRef.current = ""
+    displayedTextRef.current = ""
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current)
+      streamIntervalRef.current = null
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -426,65 +288,102 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
           content: "Perfecto. ¿Te interesa información sobre programas clínicos o no clínicos?",
           showButtons: "program-type",
         }
-        setMessages(prev => [...prev, assistantMessage])
+        setMessages((prev) => [...prev, assistantMessage])
         setChatState("program-selection")
+        setIsLoading(false)
         return
       }
 
-      // Si parece una consulta de programa, buscar primero en la categoría 'programs'
       let knowledgeResults = await LearningSystem.searchKnowledge(
         messageText,
         isProgramQuery(messageText) ? "programs" : undefined,
       )
       if (knowledgeResults.length === 0 && isProgramQuery(messageText)) {
-        // Fallback a búsqueda general si no hay coincidencias en la categoría 'programs'
         knowledgeResults = await LearningSystem.searchKnowledge(messageText)
       }
-      let response = ""
 
-      if (knowledgeResults.length > 0) {
-        const allAnswers = knowledgeResults.map(k => k.answer).join("\n\n")
-        const prompt = `Eres UJAPITO, asistente de la Dirección de Postgrado UJAP. Lee cuidadosamente la siguiente "Información encontrada" y responde a la "Pregunta original" en español, de forma clara, bien ordenada y con acentos correctos. 
-
-Requisitos de formato (usa Markdown):
-- Título corto en una línea si aplica (opcional)
-- Párrafos separados por líneas en blanco
-- Listas con guiones (-) o números cuando corresponda
-- Resalta conceptos clave con **negrita**, no abuses
-- Mantén el foco en la pregunta actual, sin mezclar otros temas
-
-Estructura sugerida cuando aplique (adáptala al contenido disponible):
-1) Descripción breve
-2) Requisitos (si existen)
-3) Duración y modalidad (si existen)
-4) Costos/aranceles (si existen)
-5) Documentos/inscripción (si existen)
-6) Contacto (si existen correos o teléfonos)
-
-No inventes datos que no estén en la información.
-
-Información encontrada:
-${allAnswers}
-
-Pregunta original: "${messageText}"`
-        response = await callGeminiAPI(prompt, updatedMessagesWithUser)
-      } else {
-        console.log("No se encontró conocimiento. Enviando a IA:", messageText)
-        response = await callGeminiAPI(messageText, updatedMessagesWithUser)
-      }
-
-      const safeContent = cleanResponse(response).slice(0, 9900)
+      const assistantMessageId = (Date.now() + 1).toString()
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         role: "assistant",
-        content: safeContent,
-        confidence: knowledgeResults.length > 0 ? 1.0 : 0.5,
+        content: "",
+        isStreaming: true,
       }
-      setMessages(prev => [...prev, assistantMessage])
-      setApiStatus("working")
+      let messageAdded = false
 
+      let finalPrompt = messageText
+      if (knowledgeResults.length > 0) {
+        // Usar solo el PRIMER resultado (mejor coincidencia)
+        const bestResult = knowledgeResults[0]
+        finalPrompt = `Responde la siguiente pregunta basándote en la información disponible. Sé conciso y directo.
+
+Información disponible:
+P: ${bestResult.question}
+R: ${bestResult.answer}
+
+Pregunta del usuario: "${messageText}"`
+      }
+
+      const { fullContent, metadata } = await AIService.generateResponseStream(
+        finalPrompt,
+        updatedMessagesWithUser,
+        (chunk: string) => {
+          if (!messageAdded) {
+            setMessages((prev) => [...prev, assistantMessage])
+            messageAdded = true
+            setIsLoading(false)
+            startLetterByLetterDisplay(assistantMessageId)
+          }
+
+          textBufferRef.current += chunk
+        },
+      )
+
+      const waitForDisplayComplete = () => {
+        return new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (displayedTextRef.current.length === textBufferRef.current.length) {
+              clearInterval(checkInterval)
+              resolve()
+            }
+          }, 50)
+        })
+      }
+
+      await waitForDisplayComplete()
+
+      // Save to learning system
+      if (conversationId) {
+        await LearningSystem.saveMessage(conversationId, "user", messageText, metadata.intent)
+        await LearningSystem.saveMessage(
+          conversationId,
+          "assistant",
+          fullContent,
+          metadata.intent,
+          metadata.confidence,
+          metadata.responseTime,
+        )
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? {
+                ...msg,
+                confidence: metadata.confidence,
+                isStreaming: false,
+              }
+            : msg,
+        ),
+      )
+
+      setApiStatus("working")
     } catch (error) {
-      console.error("Error completo en processUserMessage:", error)
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current)
+        streamIntervalRef.current = null
+      }
+      console.error("Error in processUserMessage:", error)
       setApiStatus("error")
       const errorResponseMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -492,11 +391,55 @@ Pregunta original: "${messageText}"`
         content: "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud.",
         error: true,
       }
-      setMessages(prev => [...prev, errorResponseMessage])
+      setMessages((prev) => [...prev, errorResponseMessage])
     } finally {
       setIsLoading(false)
+      streamingMessageRef.current = ""
     }
   }
+
+  const startLetterByLetterDisplay = (messageId: string) => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current)
+    }
+
+    currentMessageIdRef.current = messageId
+    displayedTextRef.current = ""
+
+    streamIntervalRef.current = setInterval(() => {
+      const buffer = textBufferRef.current
+      const displayed = displayedTextRef.current
+
+      if (displayed.length < buffer.length) {
+        const nextChar = buffer[displayed.length]
+        displayedTextRef.current += nextChar
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  content: displayedTextRef.current,
+                }
+              : msg,
+          ),
+        )
+      } else if (displayed.length === buffer.length && buffer.length > 0) {
+        if (streamIntervalRef.current) {
+          clearInterval(streamIntervalRef.current)
+          streamIntervalRef.current = null
+        }
+      }
+    }, 30)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -513,14 +456,11 @@ Pregunta original: "${messageText}"`
   return (
     <div className={containerClass}>
       <div className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl">
-        {/* Header - Professional Design */}
         <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden flex-shrink-0">
-          {/* Background pattern */}
           <div className="absolute inset-0 bg-gradient-to-r from-amber-600/20 to-orange-600/20 backdrop-blur-3xl"></div>
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fillRule=evenodd%3E%3Cg fill=%23ffffff fillOpacity=0.05%3E%3Ccircle cx=30 cy=30 r=2/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
 
           <div className="flex items-center justify-between relative z-10">
-            {/* Left side - Title and status */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="relative">
                 <Avatar className="h-10 w-10 md:h-12 md:w-12 bg-white/20 backdrop-blur-sm border-2 border-white/30">
@@ -537,10 +477,6 @@ Pregunta original: "${messageText}"`
                 <div className="text-lg md:text-xl font-bold tracking-tight">UJAPITO</div>
                 <div className="text-sm md:text-base opacity-90 font-medium">Dirección de Postgrado</div>
               </div>
-            </div>
-
-            {/* Right side - Action buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
             </div>
           </div>
         </div>
@@ -591,7 +527,7 @@ Pregunta original: "${messageText}"`
                     </div>
                   </div>
 
-                  {message.role === "assistant" && !message.error && !message.showButtons && (
+                  {message.role === "assistant" && !message.error && !message.showButtons && !message.isStreaming && (
                     <div className="flex gap-2 justify-start">
                       <Button
                         variant="ghost"
