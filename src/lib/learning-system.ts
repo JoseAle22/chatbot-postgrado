@@ -152,10 +152,13 @@ export class LearningSystem {
     source = "manual",
   ): Promise<void> {
     try {
+      // Remapea categoría para conocimiento aprendido que no debe mezclarse con la oferta oficial de programas.
+      // Si el origen es "learned" y la categoría detectada fue "programs", guardamos como "learned_conversation".
+      const categoryToSave = source === "learned" && category === "programs" ? "learned_conversation" : category
       await databases.createDocument(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE, generateId(), {
         question,
         answer,
-        category,
+        category: categoryToSave,
         keywords,
         usage_count: 0,
         success_rate: 0.0,
