@@ -89,6 +89,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   error?: boolean
+  streaming?: boolean
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
   feedback?: "positive" | "negative"
   confidence?: number
@@ -416,6 +417,18 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
 
     const updatedMessagesWithUser = [...messages, userMessage]
     setMessages(updatedMessagesWithUser)
+
+    // Create an assistant placeholder that will be typed out while we wait
+    const assistantId = (Date.now() + 1).toString()
+    const assistantPlaceholder: Message = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      streaming: true,
+      confidence: 0,
+    }
+    // Add placeholder immediately so the UI shows the assistant bubble (even empty) instead of a separate "Escribiendo..." bubble
+    setMessages((prev) => [...prev, assistantPlaceholder])
     setIsLoading(true)
 
     try {
@@ -474,25 +487,43 @@ Pregunta original: "${messageText}"`
       }
 
       const safeContent = cleanResponse(response).slice(0, 9900)
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: safeContent,
-        confidence: knowledgeResults.length > 0 ? 1.0 : 0.5,
+
+      // Type out the assistant response into the existing placeholder to give a streaming/typing illusion
+      try {
+        const fullText = safeContent
+        const chunkSize = 4 // number of characters appended per frame
+        const delay = 20 // ms between frames (adjust for speed)
+
+        for (let i = chunkSize; i < fullText.length; i += chunkSize) {
+          const partial = fullText.slice(0, i)
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: partial } : m)))
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, delay))
+        }
+
+        // Ensure final content is set and mark streaming false
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: fullText, streaming: false, confidence: knowledgeResults.length > 0 ? 1.0 : 0.5 }
+              : m,
+          ),
+        )
+        setApiStatus("working")
+      } catch (err) {
+        // In case the typing loop failed, fall back to setting the full content
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: safeContent, streaming: false } : m)))
+        setApiStatus("working")
       }
-      setMessages(prev => [...prev, assistantMessage])
-      setApiStatus("working")
 
     } catch (error) {
       console.error("Error completo en processUserMessage:", error)
       setApiStatus("error")
-      const errorResponseMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud.",
-        error: true,
-      }
-      setMessages(prev => [...prev, errorResponseMessage])
+      // Replace the placeholder assistant message with an error message (if it exists) or append a new one
+      const errText = "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud."
+      setMessages((prev) =>
+        prev.map((m) => (m.role === "assistant" && m.streaming ? { ...m, content: errText, error: true, streaming: false } : m)),
+      )
     } finally {
       setIsLoading(false)
     }
@@ -694,7 +725,7 @@ Pregunta original: "${messageText}"`
               </div>
             ))}
 
-            {isLoading && (
+            {isLoading && !messages.some((m) => m.streaming) && (
               <div className="flex gap-3 md:gap-4 justify-start animate-in slide-in-from-bottom-2 fade-in duration-300">
                 <Avatar className="h-8 w-8 md:h-10 md:w-10 mt-1 flex-shrink-0 shadow-lg border-2 border-white">
                   <AvatarFallback className="bg-gradient-to-br from-amber-100 to-orange-200 text-amber-700">
