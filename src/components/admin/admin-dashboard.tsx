@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { account, databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MessageSquare, Database, BarChart3, Brain, Clock } from "lucide-react"
+import { MessageSquare, Database, BarChart3, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
 import { KnowledgeManager } from "./knowledge-manager"
 import LearningInsights from "./learning-insights"
@@ -115,13 +115,6 @@ export default function AdminDashboard() {
           >
             <MessageSquare className="w-8 h-8 mb-1" />
             Feedback
-          </button>
-          <button
-            className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "patterns" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
-            onClick={() => setActiveTab("patterns")}
-          >
-            <Brain className="w-8 h-8 mb-1" />
-            Patrones
           </button>
         </div>
         <div className="mt-4">
