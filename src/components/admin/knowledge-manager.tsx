@@ -20,7 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Plus, Search, Edit, Trash2, BookOpen, TrendingUp } from "lucide-react"
-import { databases, DATABASE_ID, COLLECTIONS, Query } from "@/lib/appwrite"
+import { databases, DATABASE_ID, COLLECTIONS, Query, generateId } from "@/lib/appwrite"
 import { LearningSystem } from "@/lib/learning-system"
 import type { KnowledgeItem } from "@/lib/appwrite"
 
@@ -40,7 +40,18 @@ export function KnowledgeManager() {
     keywords: "",
   })
 
-  const categories = ["programs", "admissions", "contact", "costs", "schedule", "general"]
+  // Category add mode state
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryValue, setNewCategoryValue] = useState<string>("")
+
+  const [categories, setCategories] = useState<string[]>([
+    "programs",
+    "admissions",
+    "contact",
+    "costs",
+    "schedule",
+    "general",
+  ])
 
   const categoryLabels: { [key: string]: string } = {
     programs: "Programas",
@@ -65,8 +76,26 @@ export function KnowledgeManager() {
     }
   }
 
+  // Load persisted categories from Appwrite (fallback to defaults if not available)
+  const loadCategories = async () => {
+    try {
+      const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.CATEGORIES)
+      if (res && Array.isArray(res.documents) && res.documents.length > 0) {
+        // Expect each document to have a `name` field
+        const persisted = res.documents.map((d: any) => d.name || d.$id)
+        // Merge defaults with persisted (preserve order, avoid duplicates)
+        const merged = Array.from(new Set([...categories, ...persisted]))
+        setCategories(merged)
+      }
+    } catch (err) {
+      // If collection doesn't exist or error, keep default categories
+      // console.debug("No categories collection or error loading categories:", err)
+    }
+  }
+
   useEffect(() => {
     loadKnowledgeItems()
+    loadCategories()
   }, [])
 
   const filteredItems = knowledgeItems.filter((item) => {
@@ -118,6 +147,22 @@ export function KnowledgeManager() {
       category: item.category,
       keywords: item.keywords?.join(", ") || "",
     })
+    // Ensure category exists in the selectable list (and persist it)
+    if (item.category && !categories.includes(item.category)) {
+      (async () => {
+          try {
+          // Persist new category to Appwrite if possible
+          await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
+            name: item.category,
+            label: item.category,
+            created_at: new Date().toISOString(),
+          })
+        } catch (e) {
+          // ignore errors (collection may not exist)
+        }
+        setCategories((prev) => [...prev, item.category])
+      })()
+    }
     setIsAddDialogOpen(true)
   }
 
@@ -135,6 +180,8 @@ export function KnowledgeManager() {
   const resetForm = () => {
     setFormData({ question: "", answer: "", category: "", keywords: "" })
     setEditingItem(null)
+    setAddingCategory(false)
+    setNewCategoryValue("")
   }
 
   return (
@@ -197,22 +244,84 @@ export function KnowledgeManager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona categoría" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {categoryLabels[cat]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {/* Allow selecting existing category or choose to add a new one */}
+                      {!addingCategory && (
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value) => {
+                            if (value === "__new__") {
+                              // enter new category mode
+                              setNewCategoryValue("")
+                              setAddingCategory(true)
+                              setFormData((prev) => ({ ...prev, category: "" }))
+                            } else {
+                              setFormData((prev) => ({ ...prev, category: value }))
+                            }
+                          }}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona categoría" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {categories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {categoryLabels[cat] || cat}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__new__">Agregar nueva categoría...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Inline new category input when user chooses to add one */}
+                      {addingCategory && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Nueva categoría"
+                            value={newCategoryValue}
+                            onChange={(e) => setNewCategoryValue(e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const newCat = (newCategoryValue || "").trim()
+                              if (!newCat) return
+                              const normalized = newCat;
+                              // Persist category in Appwrite collection if possible
+                              (async () => {
+                                try {
+                                await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
+                                  name: normalized,
+                                  label: normalized,
+                                  created_at: new Date().toISOString(),
+                                })
+                                } catch (e) {
+                                  // ignore if collection missing or error
+                                }
+                              })()
+                              if (!categories.includes(normalized)) setCategories((prev) => [...prev, normalized])
+                              setFormData((prev) => ({ ...prev, category: normalized }))
+                              setAddingCategory(false)
+                              setNewCategoryValue("")
+                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-white"
+                          >
+                            Agregar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setAddingCategory(false)
+                              setNewCategoryValue("")
+                              setFormData((prev) => ({ ...prev, category: "" }))
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      )}
                   </div>
 
                   <div className="space-y-2">

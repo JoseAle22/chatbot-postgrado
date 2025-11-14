@@ -17,6 +17,7 @@ export const COLLECTIONS = {
   LEARNING_PATTERNS: "learning_patterns",
   FEEDBACK: "feedback",
   ADMIN_ANALYTICS: "admin_analytics",
+  CATEGORIES: "categories",
 }
 
 // Types
