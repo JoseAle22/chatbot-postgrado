@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,16 +43,10 @@ export function KnowledgeManager() {
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategoryValue, setNewCategoryValue] = useState<string>("")
 
-  const [categories, setCategories] = useState<string[]>([
-    "programs",
-    "admissions",
-    "contact",
-    "costs",
-    "schedule",
-    "general",
-  ])
-
-  const categoryLabels: { [key: string]: string } = {
+  // --- INICIO: Cambios para Categorías Dinámicas ---
+  
+  // Valores por defecto para las categorías
+  const defaultCategories = {
     programs: "Programas",
     admissions: "Admisiones",
     contact: "Contacto",
@@ -61,6 +54,14 @@ export function KnowledgeManager() {
     schedule: "Horarios",
     general: "General",
   }
+
+  // El estado 'categories' ahora solo almacena los NOMBRES (keys)
+  const [categories, setCategories] = useState<string[]>(Object.keys(defaultCategories))
+  
+  // El estado 'categoryLabels' ahora es dinámico y se fusionará con los datos de Appwrite
+  const [categoryLabels, setCategoryLabels] = useState<{ [key: string]: string }>(defaultCategories)
+
+  // --- FIN: Cambios para Categorías Dinámicas ---
 
   const loadKnowledgeItems = async () => {
     setLoading(true)
@@ -81,14 +82,30 @@ export function KnowledgeManager() {
     try {
       const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.CATEGORIES)
       if (res && Array.isArray(res.documents) && res.documents.length > 0) {
-        // Expect each document to have a `name` field
-        const persisted = res.documents.map((d: any) => d.name || d.$id)
-        // Merge defaults with persisted (preserve order, avoid duplicates)
-        const merged = Array.from(new Set([...categories, ...persisted]))
-        setCategories(merged)
+        
+        const persistedNames: string[] = []
+        const persistedLabels: { [key: string]: string } = {}
+        
+        res.documents.forEach((doc: any) => {
+          if (doc.name && doc.label) {
+            persistedNames.push(doc.name)
+            persistedLabels[doc.name] = doc.label
+          }
+        })
+
+        // Fusionar NOMBRES, asegurando que los defaults estén y evitando duplicados
+        setCategories((prevDefaults) => 
+          Array.from(new Set([...prevDefaults, ...persistedNames]))
+        )
+        
+        // Fusionar LABELS, dando prioridad a los de Appwrite sobre los defaults
+        setCategoryLabels((prevDefaults) => ({
+          ...prevDefaults,
+          ...persistedLabels,
+        }))
       }
     } catch (err) {
-      // If collection doesn't exist or error, keep default categories
+      // Si falla, simplemente nos quedamos con los defaults
       // console.debug("No categories collection or error loading categories:", err)
     }
   }
@@ -155,12 +172,14 @@ export function KnowledgeManager() {
           await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
             name: item.category,
             label: item.category,
-            created_at: new Date().toISOString(),
+  
           })
         } catch (e) {
           // ignore errors (collection may not exist)
         }
+        // Actualiza los estados locales para reflejar la nueva categoría inmediatamente
         setCategories((prev) => [...prev, item.category])
+        setCategoryLabels((prev) => ({...prev, [item.category]: item.category}))
       })()
     }
     setIsAddDialogOpen(true)
@@ -278,30 +297,37 @@ export function KnowledgeManager() {
                       {addingCategory && (
                         <div className="flex gap-2">
                           <Input
-                            placeholder="Nueva categoría"
+                            placeholder="Nueva categoría (Nombre)"
                             value={newCategoryValue}
                             onChange={(e) => setNewCategoryValue(e.target.value)}
                           />
                           <Button
                             type="button"
                             onClick={() => {
-                              const newCat = (newCategoryValue || "").trim()
-                              if (!newCat) return
-                              const normalized = newCat;
-                              // Persist category in Appwrite collection if possible
+                              const newCatLabel = (newCategoryValue || "").trim()
+                              if (!newCatLabel) return
+                              // Usamos el label como el 'name' (ID) y el 'label' (visual)
+                              const newCatName = newCatLabel.toLowerCase().replace(/\s+/g, '_'); // o usa el label directo
+                              
+                              // Persist category in Appwrite collection
                               (async () => {
                                 try {
                                 await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
-                                  name: normalized,
-                                  label: normalized,
-                                  created_at: new Date().toISOString(),
+                                  name: newCatName, // ID
+                                  label: newCatLabel, // Etiqueta visible
                                 })
                                 } catch (e) {
-                                  // ignore if collection missing or error
+                                  console.error("Error saving new category:", e)
                                 }
                               })()
-                              if (!categories.includes(normalized)) setCategories((prev) => [...prev, normalized])
-                              setFormData((prev) => ({ ...prev, category: normalized }))
+                              
+                              // Actualiza estados locales
+                              if (!categories.includes(newCatName)) {
+                                setCategories((prev) => [...prev, newCatName])
+                                setCategoryLabels((prev) => ({...prev, [newCatName]: newCatLabel}))
+                              }
+                              
+                              setFormData((prev) => ({ ...prev, category: newCatName }))
                               setAddingCategory(false)
                               setNewCategoryValue("")
                             }}
@@ -367,9 +393,10 @@ export function KnowledgeManager() {
           </SelectTrigger>
           <SelectContent className="bg-white">
             <SelectItem value="all">Todas las categorías</SelectItem>
+            {/* Ahora usa los estados dinámicos */}
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
-                {categoryLabels[cat]}
+                {categoryLabels[cat] || cat}
               </SelectItem>
             ))}
           </SelectContent>
@@ -399,6 +426,7 @@ export function KnowledgeManager() {
                   <div className="space-y-2">
                     <CardTitle className="text-lg">{item.question}</CardTitle>
                     <div className="flex items-center gap-2">
+                      {/* Ahora usa el estado dinámico para la etiqueta */}
                       <Badge variant="secondary">{categoryLabels[item.category] || item.category}</Badge>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <TrendingUp className="h-3 w-3" />
