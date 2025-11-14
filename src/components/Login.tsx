@@ -41,7 +41,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-amber-50">
+    <div
+      className="relative min-h-[100dvh] w-full flex items-center justify-center overflow-hidden bg-amber-50"
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -53,9 +56,9 @@ function Login({ onLogin }: { onLogin: () => void }) {
       <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-amber-400/20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-orange-400/20 rounded-full blur-3xl animate-pulse animation-delay-4000" />
 
-      <form 
-        onSubmit={handleLogin} 
-        className="relative z-10 w-full max-w-md mx-4 bg-white/80 backdrop-blur-lg border border-white/50 rounded-2xl shadow-xl p-8 md:p-10 space-y-6"
+      <form
+        onSubmit={handleLogin}
+        className="relative z-10 w-full max-w-md mx-4 sm:mx-6 bg-white/80 backdrop-blur-lg border border-white/50 rounded-2xl shadow-xl p-6 md:p-10 space-y-6 max-h-[80dvh] overflow-auto"
       >
         {/* Header with icon */}
         <div className="space-y-2 text-center">
@@ -64,7 +67,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
               <LogIn className="w-6 h-6 text-white" />
             </div>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 drop-shadow-sm">
+          <h2 className="text-2xl md:text-4xl font-bold text-gray-800 drop-shadow-sm">
             Bienvenido
           </h2>
           <p className="text-gray-500 text-sm">Inicia sesión en tu cuenta de administrador</p>
