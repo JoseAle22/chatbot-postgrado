@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { account, databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite"
+
+// Appwrite config for keepalive logout
+const APPWRITE_ENDPOINT = (import.meta.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string) || "https://cloud.appwrite.io/v1"
+const APPWRITE_PROJECT = (import.meta.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID as string) || "68da0bce0032e08cea40"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageSquare, Database, BarChart3, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
@@ -64,13 +68,32 @@ export default function AdminDashboard() {
     fetchStats();
 
     // Cerrar sesión al cerrar la pestaña
-    const handleTabClose = async () => {
-      await account.deleteSession("current");
-    };
-    window.addEventListener("beforeunload", handleTabClose);
+    const handleTabClose = () => {
+      try {
+        // Use fetch with keepalive to ensure the request is sent even when the page unloads
+        const endpoint = `${APPWRITE_ENDPOINT.replace(/\/$/, "")}/account/sessions/current`
+        navigator && (fetch as any)(endpoint, {
+          method: "DELETE",
+          keepalive: true,
+          credentials: "include",
+          headers: {
+            "X-Appwrite-Project": APPWRITE_PROJECT,
+          },
+        })
+      } catch (err) {
+        // Fallback to SDK call (may be aborted in some browsers)
+        try {
+          void account.deleteSession("current")
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    window.addEventListener("beforeunload", handleTabClose)
     return () => {
-      window.removeEventListener("beforeunload", handleTabClose);
-    };
+      window.removeEventListener("beforeunload", handleTabClose)
+    }
   }, []);
 
   return (
