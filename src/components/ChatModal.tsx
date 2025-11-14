@@ -31,8 +31,8 @@ export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
       <div
         className="
           relative
-          w-full h-full sm:w-80 sm:h-96
-          md:w-auto md:h-auto md:max-w-6xl md:max-h-[90vh] md:m-4
+          w-full h-full sm:w-full sm:h-[92vh]
+          md:w-auto md:h-auto md:max-w-7xl md:max-h-[95vh] md:m-6
           flex flex-col shadow-2xl border border-amber-200 bg-white rounded-lg
           animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-8 fade-in duration-500 ease-out
         "
