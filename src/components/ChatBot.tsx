@@ -107,7 +107,8 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<"unknown" | "working" | "error">("unknown")
-  const [, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
+  const [chatState, setChatState] = useState<"initial" | "program-selection" | "conversation">("initial")
+  const [, setUserName] = useState<string>("")
   const [conversationId, setConversationId] = useState<string>("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -116,9 +117,8 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     const initialMessage: Message = {
       id: "welcome",
       role: "assistant",
-      content:
-        "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. ¿En qué puedo ayudarte hoy?",
-      showButtons: "initial",
+      // Ask for the user's name first; buttons will be shown after we receive the name
+      content: "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Mucho gusto, ¿me podrías indicar tu nombre?",
     }
     setMessages([initialMessage])
 
@@ -336,6 +336,56 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
     }
   }
 
+  // Dedicated greeting call: generates a short, warm message with a compliment using the user's name
+  // without consulting the knowledge base. Falls back to a static message if API key is unavailable.
+  const callGeminiGreeting = async (name: string, conversationHistory: Message[]) => {
+    const API_KEY = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY
+    const fallback = `¡Mucho gusto, ${name}! Es un placer saludarte. **Estoy aquí para ayudarte** con consultas sobre Postgrado UJAP. ¿Qué te gustaría saber?`
+
+    if (!API_KEY) return fallback
+
+    const systemPrompt = `Eres UJAPITO, asistente virtual de la Dirección de Postgrado UJAP.
+Genera un único mensaje breve y cálido que:
+- Incluya un cumplido auténtico usando el nombre "${name}" (o trato directo).
+- Ofrezca ayuda concreta sobre consultas de postgrado UJAP.
+- Use español claro con Markdown minimalista (párrafos y **negritas** solo si aportan).
+- Evita usar información de bases de conocimiento; solo un saludo cordial + oferta de ayuda.`
+
+    const contents = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Entendido. Prepararé un saludo cordial y una oferta de ayuda." }] },
+    ]
+
+    // Opcional: un poco de historial reciente para estilo; no es necesario para conocimiento
+    const recent = conversationHistory.slice(-2)
+    for (const msg of recent) {
+      contents.push({ role: msg.role === "user" ? "user" : "model", parts: [{ text: msg.content }] })
+    }
+    contents.push({ role: "user", parts: [{ text: `El nombre del usuario es: ${name}` }] })
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            temperature: 0.6,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 256,
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) return fallback
+    const data = await response.json()
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+    return text ? AIService.cleanResponse(text) : fallback
+  }
+
   const cleanResponse = (text: string) => {
     return AIService.cleanResponse(text)
   }
@@ -417,6 +467,63 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
 
     const updatedMessagesWithUser = [...messages, userMessage]
     setMessages(updatedMessagesWithUser)
+
+    // If we're in the initial state, treat the user's message as their name and craft a warm AI welcome
+    if (chatState === "initial") {
+      const name = messageText.trim() || "amigo"
+      setUserName(name)
+      setIsLoading(true)
+
+      const assistantId = (Date.now() + 1).toString()
+      const assistantPlaceholder: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        streaming: true,
+        confidence: 0,
+      }
+
+      setMessages((prev) => [...prev, assistantPlaceholder])
+
+      try {
+        const greeting = await callGeminiGreeting(name, updatedMessagesWithUser)
+        const fullText = greeting.slice(0, 9900)
+
+        const chunkSize = 4
+        const delay = 20
+        for (let i = chunkSize; i < fullText.length; i += chunkSize) {
+          const partial = fullText.slice(0, i)
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: partial } : m)))
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, delay))
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: fullText, streaming: false, confidence: 0.9, showButtons: "initial" }
+              : m,
+          ),
+        )
+        setApiStatus("working")
+        setChatState("conversation")
+      } catch (error) {
+        console.error("Error generando saludo personalizado:", error)
+        const errText = `¡Mucho gusto, ${name}! **Estoy aquí para ayudarte** con tus consultas sobre Postgrado UJAP. ¿Qué te gustaría saber?`
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: errText, streaming: false, showButtons: "initial" }
+              : m,
+          ),
+        )
+        setApiStatus("error")
+        setChatState("conversation")
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
 
     // Create an assistant placeholder that will be typed out while we wait
     const assistantId = (Date.now() + 1).toString()

@@ -91,16 +91,46 @@ const iconForType = (type: Program["type"]) => {
   }
 }
 
-// Extrae partes útiles del texto de respuesta: resumen breve, duración, email, teléfono
+// extractSummaryParts: first implementation removed to avoid duplicate; the refined version below is kept.
 function extractSummaryParts(answer: string) {
-  const text = (answer || "").toString()
+  const text = (answer || "").toString().trim()
 
-  // About: primera oración o ~220 caracteres
-  const firstSentenceMatch = text.match(/[^\.!?\n]+[\.!?]/)
-  const aboutRaw = firstSentenceMatch ? firstSentenceMatch[0] : text.slice(0, 220)
-  const about = aboutRaw.trim().replace(/\s+/g, " ")
+  // 1) Recolección de oraciones hasta una longitud mínima decente (>=120 chars o 2-3 oraciones)
+  const sentenceRegex = /[^\.\!?\n]+[\.\!?]/g
+  const sentences = text.match(sentenceRegex) || []
+  let collected: string[] = []
+  let lengthAcc = 0
+  for (const s of sentences) {
+    const clean = s.trim().replace(/\s+/g, " ")
+    if (!clean) continue
+    collected.push(clean)
+    lengthAcc += clean.length
+    if (lengthAcc >= 120 || collected.length >= 3) break
+  }
 
-  // Duración: etiqueta o patrón tipo "18 meses" / "2 años"
+  // 2) Si quedó muy corto (<80 chars) intentar agregar más texto o bullets
+  if (lengthAcc < 80) {
+    // Buscar bullets en el texto original
+    const bulletLines = text
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter((l) => /^[-*•]/.test(l))
+      .slice(0, 3)
+    if (bulletLines.length > 0) {
+      const compact = bulletLines.map((b) => b.replace(/^[-*•]\s*/, "").trim()).join(" • ")
+      if (compact) collected.push(compact)
+    } else {
+      // Si no hay bullets, extender con un fragmento adicional del texto
+      const extra = text.slice(0, 200).replace(/\s+/g, " ")
+      if (extra && !collected.some((c) => extra.startsWith(c))) {
+        collected.push(extra)
+      }
+    }
+  }
+
+  const about = collected.join(" ").slice(0, 420).trim()
+
+  // 3) Duración: detectar etiqueta o patrón tipo "18 meses" / "2 años"
   const durLabel = text.match(/duraci[oó]n\s*[:\-]?\s*([^\n\.]{1,60})/i)
   let duration: string | undefined
   if (durLabel && durLabel[1]) {
@@ -110,11 +140,11 @@ function extractSummaryParts(answer: string) {
     if (durGeneric) duration = `${durGeneric[1]} ${durGeneric[2]}`
   }
 
-  // Email: primero válido
+  // 4) Email
   const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
   const email = emailMatch ? emailMatch[0] : undefined
 
-  // Teléfono: secuencia con >= 7 dígitos, permite +, espacios, () y -
+  // 5) Teléfono
   const phoneCandidates = text.match(/[+]?\d[\d\s().-]{6,}\d/g) || []
   const normalizeDigits = (s: string) => s.replace(/[^\d]/g, "")
   const phone = phoneCandidates.find((p) => {
@@ -183,7 +213,9 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
   }, [programType])
 
   const programs = useMemo((): Program[] => {
-    return items.map((it) => {
+    // Excluir cualquier item aprendido cuya categoría haya sido remapeada o cuyo source indique que proviene de conversaciones.
+    const official = items.filter((it: any) => it.source !== "learned")
+    return official.map((it: any) => {
       const type = inferTypeFromTitle(it.question)
       return {
         id: it.$id,

@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { account, databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite"
+
+// Appwrite config for keepalive logout
+const APPWRITE_ENDPOINT = (import.meta.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string) || "https://cloud.appwrite.io/v1"
+const APPWRITE_PROJECT = (import.meta.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID as string) || "68da0bce0032e08cea40"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageSquare, Database, BarChart3, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
@@ -64,13 +68,32 @@ export default function AdminDashboard() {
     fetchStats();
 
     // Cerrar sesión al cerrar la pestaña
-    const handleTabClose = async () => {
-      await account.deleteSession("current");
-    };
-    window.addEventListener("beforeunload", handleTabClose);
+    const handleTabClose = () => {
+      try {
+        // Use fetch with keepalive to ensure the request is sent even when the page unloads
+        const endpoint = `${APPWRITE_ENDPOINT.replace(/\/$/, "")}/account/sessions/current`
+        navigator && (fetch as any)(endpoint, {
+          method: "DELETE",
+          keepalive: true,
+          credentials: "include",
+          headers: {
+            "X-Appwrite-Project": APPWRITE_PROJECT,
+          },
+        })
+      } catch (err) {
+        // Fallback to SDK call (may be aborted in some browsers)
+        try {
+          void account.deleteSession("current")
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    window.addEventListener("beforeunload", handleTabClose)
     return () => {
-      window.removeEventListener("beforeunload", handleTabClose);
-    };
+      window.removeEventListener("beforeunload", handleTabClose)
+    }
   }, []);
 
   return (
@@ -94,23 +117,23 @@ export default function AdminDashboard() {
 
       {/* Main Dashboard Tabs */}
       <div className="bg-white rounded-xl shadow p-6 mb-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-stretch">
           <button
-            className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "knowledge" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
+            className={`w-full flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "knowledge" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
             onClick={() => setActiveTab("knowledge")}
           >
             <Database className="w-8 h-8 mb-1" />
             Base de Conocimiento
           </button>
           <button
-            className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "analytics" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
+            className={`w-full flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "analytics" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
             onClick={() => setActiveTab("analytics")}
           >
             <BarChart3 className="w-8 h-8 mb-1" />
             Analíticas
           </button>
           <button
-            className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "feedback" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
+            className={`w-full flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl font-bold shadow transition text-lg border-2 ${activeTab === "feedback" ? "bg-orange-100 text-orange-700 border-orange-400" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300"}`}
             onClick={() => setActiveTab("feedback")}
           >
             <MessageSquare className="w-8 h-8 mb-1" />

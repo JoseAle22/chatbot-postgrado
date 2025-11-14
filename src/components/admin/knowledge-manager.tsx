@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Plus, Search, Edit, Trash2, BookOpen, TrendingUp } from "lucide-react"
-import { databases, DATABASE_ID, COLLECTIONS, Query } from "@/lib/appwrite"
+import { databases, DATABASE_ID, COLLECTIONS, Query, generateId } from "@/lib/appwrite"
 import { LearningSystem } from "@/lib/learning-system"
 import type { KnowledgeItem } from "@/lib/appwrite"
 
@@ -40,9 +39,14 @@ export function KnowledgeManager() {
     keywords: "",
   })
 
-  const categories = ["programs", "admissions", "contact", "costs", "schedule", "general"]
+  // Category add mode state
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryValue, setNewCategoryValue] = useState<string>("")
 
-  const categoryLabels: { [key: string]: string } = {
+  // --- INICIO: Cambios para Categorías Dinámicas ---
+  
+  // Valores por defecto para las categorías
+  const defaultCategories = {
     programs: "Programas",
     admissions: "Admisiones",
     contact: "Contacto",
@@ -50,6 +54,14 @@ export function KnowledgeManager() {
     schedule: "Horarios",
     general: "General",
   }
+
+  // El estado 'categories' ahora solo almacena los NOMBRES (keys)
+  const [categories, setCategories] = useState<string[]>(Object.keys(defaultCategories))
+  
+  // El estado 'categoryLabels' ahora es dinámico y se fusionará con los datos de Appwrite
+  const [categoryLabels, setCategoryLabels] = useState<{ [key: string]: string }>(defaultCategories)
+
+  // --- FIN: Cambios para Categorías Dinámicas ---
 
   const loadKnowledgeItems = async () => {
     setLoading(true)
@@ -65,8 +77,42 @@ export function KnowledgeManager() {
     }
   }
 
+  // Load persisted categories from Appwrite (fallback to defaults if not available)
+  const loadCategories = async () => {
+    try {
+      const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.CATEGORIES)
+      if (res && Array.isArray(res.documents) && res.documents.length > 0) {
+        
+        const persistedNames: string[] = []
+        const persistedLabels: { [key: string]: string } = {}
+        
+        res.documents.forEach((doc: any) => {
+          if (doc.name && doc.label) {
+            persistedNames.push(doc.name)
+            persistedLabels[doc.name] = doc.label
+          }
+        })
+
+        // Fusionar NOMBRES, asegurando que los defaults estén y evitando duplicados
+        setCategories((prevDefaults) => 
+          Array.from(new Set([...prevDefaults, ...persistedNames]))
+        )
+        
+        // Fusionar LABELS, dando prioridad a los de Appwrite sobre los defaults
+        setCategoryLabels((prevDefaults) => ({
+          ...prevDefaults,
+          ...persistedLabels,
+        }))
+      }
+    } catch (err) {
+      // Si falla, simplemente nos quedamos con los defaults
+      // console.debug("No categories collection or error loading categories:", err)
+    }
+  }
+
   useEffect(() => {
     loadKnowledgeItems()
+    loadCategories()
   }, [])
 
   const filteredItems = knowledgeItems.filter((item) => {
@@ -118,6 +164,24 @@ export function KnowledgeManager() {
       category: item.category,
       keywords: item.keywords?.join(", ") || "",
     })
+    // Ensure category exists in the selectable list (and persist it)
+    if (item.category && !categories.includes(item.category)) {
+      (async () => {
+          try {
+          // Persist new category to Appwrite if possible
+          await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
+            name: item.category,
+            label: item.category,
+  
+          })
+        } catch (e) {
+          // ignore errors (collection may not exist)
+        }
+        // Actualiza los estados locales para reflejar la nueva categoría inmediatamente
+        setCategories((prev) => [...prev, item.category])
+        setCategoryLabels((prev) => ({...prev, [item.category]: item.category}))
+      })()
+    }
     setIsAddDialogOpen(true)
   }
 
@@ -135,6 +199,8 @@ export function KnowledgeManager() {
   const resetForm = () => {
     setFormData({ question: "", answer: "", category: "", keywords: "" })
     setEditingItem(null)
+    setAddingCategory(false)
+    setNewCategoryValue("")
   }
 
   return (
@@ -197,22 +263,91 @@ export function KnowledgeManager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoría</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona categoría" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {categoryLabels[cat]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {/* Allow selecting existing category or choose to add a new one */}
+                      {!addingCategory && (
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value) => {
+                            if (value === "__new__") {
+                              // enter new category mode
+                              setNewCategoryValue("")
+                              setAddingCategory(true)
+                              setFormData((prev) => ({ ...prev, category: "" }))
+                            } else {
+                              setFormData((prev) => ({ ...prev, category: value }))
+                            }
+                          }}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona categoría" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {categories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {categoryLabels[cat] || cat}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__new__">Agregar nueva categoría...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Inline new category input when user chooses to add one */}
+                      {addingCategory && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Nueva categoría (Nombre)"
+                            value={newCategoryValue}
+                            onChange={(e) => setNewCategoryValue(e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const newCatLabel = (newCategoryValue || "").trim()
+                              if (!newCatLabel) return
+                              // Usamos el label como el 'name' (ID) y el 'label' (visual)
+                              const newCatName = newCatLabel.toLowerCase().replace(/\s+/g, '_'); // o usa el label directo
+                              
+                              // Persist category in Appwrite collection
+                              (async () => {
+                                try {
+                                await databases.createDocument(DATABASE_ID, COLLECTIONS.CATEGORIES, generateId(), {
+                                  name: newCatName, // ID
+                                  label: newCatLabel, // Etiqueta visible
+                                })
+                                } catch (e) {
+                                  console.error("Error saving new category:", e)
+                                }
+                              })()
+                              
+                              // Actualiza estados locales
+                              if (!categories.includes(newCatName)) {
+                                setCategories((prev) => [...prev, newCatName])
+                                setCategoryLabels((prev) => ({...prev, [newCatName]: newCatLabel}))
+                              }
+                              
+                              setFormData((prev) => ({ ...prev, category: newCatName }))
+                              setAddingCategory(false)
+                              setNewCategoryValue("")
+                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-white"
+                          >
+                            Agregar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setAddingCategory(false)
+                              setNewCategoryValue("")
+                              setFormData((prev) => ({ ...prev, category: "" }))
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      )}
                   </div>
 
                   <div className="space-y-2">
@@ -258,9 +393,10 @@ export function KnowledgeManager() {
           </SelectTrigger>
           <SelectContent className="bg-white">
             <SelectItem value="all">Todas las categorías</SelectItem>
+            {/* Ahora usa los estados dinámicos */}
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
-                {categoryLabels[cat]}
+                {categoryLabels[cat] || cat}
               </SelectItem>
             ))}
           </SelectContent>
@@ -290,6 +426,7 @@ export function KnowledgeManager() {
                   <div className="space-y-2">
                     <CardTitle className="text-lg">{item.question}</CardTitle>
                     <div className="flex items-center gap-2">
+                      {/* Ahora usa el estado dinámico para la etiqueta */}
                       <Badge variant="secondary">{categoryLabels[item.category] || item.category}</Badge>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <TrendingUp className="h-3 w-3" />
