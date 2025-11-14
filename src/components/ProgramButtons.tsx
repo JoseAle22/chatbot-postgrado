@@ -183,7 +183,9 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
   }, [programType])
 
   const programs = useMemo((): Program[] => {
-    return items.map((it) => {
+    // Excluir cualquier item aprendido cuya categoría haya sido remapeada o cuyo source indique que proviene de conversaciones.
+    const official = items.filter((it: any) => it.source !== "learned")
+    return official.map((it: any) => {
       const type = inferTypeFromTitle(it.question)
       return {
         id: it.$id,

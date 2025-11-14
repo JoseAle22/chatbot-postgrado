@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { account, databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MessageSquare, Database, BarChart3, Brain, Clock } from "lucide-react"
+import { MessageSquare, Database, BarChart3, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
 import { KnowledgeManager } from "./knowledge-manager"
 import LearningInsights from "./learning-insights"
