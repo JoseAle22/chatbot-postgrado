@@ -650,7 +650,7 @@ Pregunta original: "${messageText}"`
 
   return (
     <div className={containerClass}>
-      <div className="w-full h-full md:w-full md:max-w-4xl md:h-[80vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl">
+      <div className="w-full h-full md:w-full md:max-w-6xl md:h-[90vh] flex flex-col shadow-2xl border-0 md:border border-gray-200/50 bg-white md:rounded-2xl">
         {/* Header - Professional Design */}
         <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white border-b-0 rounded-t-none md:rounded-t-2xl p-4 md:p-6 relative overflow-hidden flex-shrink-0">
           {/* Background pattern */}
@@ -718,7 +718,7 @@ Pregunta original: "${messageText}"`
                   <div
                     className={`rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-lg backdrop-blur-sm transition-all duration-200 hover:shadow-xl ${
                       message.role === "user"
-                        ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white ml-auto"
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 text-gray-900 ml-auto"
                         : message.error
                           ? "bg-gradient-to-br from-red-50 to-red-100 text-red-900 border border-red-200/50"
                           : "bg-white text-gray-800 border border-gray-200/50 shadow-md"
@@ -729,7 +729,7 @@ Pregunta original: "${messageText}"`
                     </div>
                   </div>
 
-                  {message.role === "assistant" && !message.error && !message.showButtons && (
+                  {message.role === "assistant" && !message.error && !message.showButtons && !message.streaming && (
                     <div className="flex gap-2 justify-start">
                       <Button
                         variant="ghost"
@@ -869,7 +869,7 @@ Pregunta original: "${messageText}"`
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   apiStatus === "error"
-                    ? "Configura la API key primero..."
+                    ? "El servicio no está disponible. Intenta recargar la página."
                     : "Escribe tu pregunta sobre postgrado UJAP..."
                 }
                 className="w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl h-12 md:h-14 px-4 md:px-5 text-sm md:text-base bg-white shadow-sm transition-all duration-200 focus:shadow-md pr-12"
