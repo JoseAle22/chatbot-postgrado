@@ -120,7 +120,7 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       id: "welcome",
       role: "assistant",
       // Ask for the user's name first; buttons will be shown after we receive the name
-      content: "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Mucho gusto, ¿Cúal es tu nombre?",
+      content: "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Mucho gusto, ¿Cuál es tu nombre?",
     }
     setMessages([initialMessage])
 
