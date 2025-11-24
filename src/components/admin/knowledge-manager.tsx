@@ -19,6 +19,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Plus, Search, Edit, Trash2, BookOpen, TrendingUp } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { databases, DATABASE_ID, COLLECTIONS, Query, generateId } from "@/lib/appwrite"
 import { LearningSystem } from "@/lib/learning-system"
 import type { KnowledgeItem } from "@/lib/appwrite"
@@ -448,7 +450,9 @@ export function KnowledgeManager() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-3">{item.answer}</p>
+                <div className="text-muted-foreground mb-3 prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.answer}</ReactMarkdown>
+                </div>
                 {item.keywords && item.keywords.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {item.keywords.map((keyword, index) => (

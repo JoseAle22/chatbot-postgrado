@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { LearningSystem } from "@/lib/learning-system"
 import type { KnowledgeItem } from "@/lib/appwrite"
 
-// SVG Icon Components
+// --- SVG Icons ---
 const ChevronDown = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7 7 7 7-7" />
@@ -91,69 +91,87 @@ const iconForType = (type: Program["type"]) => {
   }
 }
 
-// extractSummaryParts: first implementation removed to avoid duplicate; the refined version below is kept.
+// --- Lógica de Extracción Ajustada ---
 function extractSummaryParts(answer: string) {
   const text = (answer || "").toString().trim()
+  let about = ""
+  let label = "Descripción" // Por defecto
 
-  // 1) Recolección de oraciones hasta una longitud mínima decente (>=120 chars o 2-3 oraciones)
-  const sentenceRegex = /[^\.\!?\n]+[\.\!?]/g
-  const sentences = text.match(sentenceRegex) || []
-  let collected: string[] = []
-  let lengthAcc = 0
-  for (const s of sentences) {
-    const clean = s.trim().replace(/\s+/g, " ")
-    if (!clean) continue
-    collected.push(clean)
-    lengthAcc += clean.length
-    if (lengthAcc >= 120 || collected.length >= 3) break
+  // Helper para extraer contenido de una sección
+  const extractSection = (regex: RegExp) => {
+    const match = text.match(regex)
+    if (match && match[1]) {
+      // Limpiar el texto capturado
+      return match[1].trim().replace(/^[-*•\d\.)]+\s*/, "").split(/\n+/)[0]
+    }
+    return null
   }
 
-  // 2) Si quedó muy corto (<80 chars) intentar agregar más texto o bullets
-  if (lengthAcc < 80) {
-    // Buscar bullets en el texto original
-    const bulletLines = text
-      .split(/\n+/)
-      .map((l) => l.trim())
-      .filter((l) => /^[-*•]/.test(l))
-      .slice(0, 3)
-    if (bulletLines.length > 0) {
-      const compact = bulletLines.map((b) => b.replace(/^[-*•]\s*/, "").trim()).join(" • ")
-      if (compact) collected.push(compact)
+  // 1. Intentar buscar "Objetivos" explícitamente
+  const objetivosRegex = /(?:^|\n)(?:[*#]*\s*)Objetivos\s*[:\.]?\s*([\s\S]*?)(?=\n\s*(?:Grado|Perfil|Requisitos|Justificaci|Duraci|Evaluaci|Correo|[*#]+)|$)/i
+  const foundObjective = extractSection(objetivosRegex)
+
+  if (foundObjective) {
+    about = foundObjective
+    label = "Objetivo"
+  } else {
+    // 2. Si no hay objetivos, buscar "Justificación"
+    const justifRegex = /(?:^|\n)(?:[*#]*\s*)Justificaci[oó]n\s*[:\.]?\s*([\s\S]*?)(?=\n\s*(?:Objetivos|Perfil|Visión|Grado)|$)/i
+    const foundJustif = extractSection(justifRegex)
+    
+    if (foundJustif) {
+      about = foundJustif
+      label = "Descripción"
     } else {
-      // Si no hay bullets, extender con un fragmento adicional del texto
-      const extra = text.slice(0, 200).replace(/\s+/g, " ")
-      if (extra && !collected.some((c) => extra.startsWith(c))) {
-        collected.push(extra)
+      // 3. Fallback: Primer párrafo sustancial (Descripción generada)
+      const cleanText = text.replace(/^(?:Autorizada|Aprobada|Creada)[\s\S]*?(?:Gaceta|CNU|Consejo|Resolución)[\s\S]*?[\.\n]+/i, "").trim()
+      const firstPara = cleanText.split(/\n\n/)[0]
+      if (firstPara && firstPara.length > 30) {
+        about = firstPara.slice(0, 350) + (firstPara.length > 350 ? "..." : "")
+        label = "Descripción"
       }
     }
   }
 
-  const about = collected.join(" ").slice(0, 420).trim()
-
-  // 3) Duración: detectar etiqueta o patrón tipo "18 meses" / "2 años"
-  const durLabel = text.match(/duraci[oó]n\s*[:\-]?\s*([^\n\.]{1,60})/i)
+  // 4. Extracción de Duración (Mejorada para UJAP)
   let duration: string | undefined
-  if (durLabel && durLabel[1]) {
-    duration = durLabel[1].trim()
-  } else {
+  const durSectionMatch = text.match(/(?:^|\n)\s*Duraci[oó]n\s*[:\.]?([\s\S]{0,400}?)(?=\n\s*[A-Z]|$)/i)
+  
+  if (durSectionMatch && durSectionMatch[1]) {
+    const durContent = durSectionMatch[1].replace(/\n/g, " ").trim()
+    // Patrón para capturar "dos (2) años", "9 meses", etc.
+    const timeRegex = /((?:un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s*(?:\(\d+\))?\s*(?:años|año|meses|mes|semestres|trimestres)(?:\s*y\s*(?:un|dos|tres|cuatro|cinco|\d+)\s*(?:\(\d+\))?\s*(?:meses|mes))?)/i
+    const specificTime = durContent.match(timeRegex)
+    
+    if (specificTime) {
+      duration = specificTime[1]
+    } else if (durContent.length < 80) {
+      duration = durContent
+    }
+  }
+  // Fallback duración genérica
+  if (!duration) {
     const durGeneric = text.match(/\b(\d{1,2})\s*(años|año|meses|mes|trimestres|trimestre|semestres|semestre)\b/i)
     if (durGeneric) duration = `${durGeneric[1]} ${durGeneric[2]}`
   }
 
-  // 4) Email
-  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
-  const email = emailMatch ? emailMatch[0] : undefined
+  // 5. Contacto
+  const emailMatches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)
+  const email = emailMatches ? emailMatches[0] : undefined
 
-  // 5) Teléfono
-  const phoneCandidates = text.match(/[+]?\d[\d\s().-]{6,}\d/g) || []
-  const normalizeDigits = (s: string) => s.replace(/[^\d]/g, "")
-  const phone = phoneCandidates.find((p) => {
-    const n = normalizeDigits(p)
-    return n.length >= 7 && n.length <= 15
-  })
+  let phone: string | undefined
+  const contactSection = text.match(/Contacto\s*[:\.]?([\s\S]{0,300})/i)
+  const textToSearchPhone = contactSection ? contactSection[1] : text
+  const phoneCandidates = textToSearchPhone.match(/(?:\+58|0)(?:[\d\s().-]{8,})\d/g)
+  
+  if (phoneCandidates && phoneCandidates.length > 0) {
+    phone = phoneCandidates.find(p => p.includes("+58")) || phoneCandidates[0]
+    phone = phone.trim()
+  }
 
-  return { about, duration, email, phone }
+  return { about, label, duration, email, phone }
 }
+
 
 export default function ProgramButtons({ programType, onProgramSelectTitle }: ProgramButtonsProps) {
   const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
@@ -167,32 +185,20 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
       setLoading(true)
       setError(null)
       try {
-  // Solo obtener los registros categorizados como 'programs'
-  const fetched: KnowledgeItem[] = await LearningSystem.listKnowledgeByCategory("programs")
+        const fetched: KnowledgeItem[] = await LearningSystem.listKnowledgeByCategory("programs")
 
-        // Clasificación basada exclusivamente en keywords normalizados
         const normalize = (t: string) =>
-          (t || "")
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
+          (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
-        // Tokens dentales/específicos (normalizados) para evitar falsos positivos por "clinico" genérico
         const dentalSet = new Set([
-          "bucal", "bucodental",
-          "odontologia", "odontologico", "odontologicos", "odontologica", "odontologicas",
-          "ortodoncia",
-          "periodoncia",
-          "endodoncia",
-          "odontopediatria",
-          "implante", "implantes",
-          "maxilofacial",
-          "estomatologia",
+          "bucal", "bucodental", "odontologia", "odontologico", "odontologicos", 
+          "odontologica", "odontologicas", "ortodoncia", "periodoncia", 
+          "endodoncia", "odontopediatria", "implante", "implantes", 
+          "maxilofacial", "estomatologia"
         ])
 
         const filtered = fetched.filter((it) => {
           const kws = (it.keywords || []).map((k) => normalize(k || ""))
-          // Clasificar clínico solo si encontramos tokens dentales específicos
           const isClinical = kws.some((k) => {
             const tokens = k.split(/[^a-z0-9]+/).filter(Boolean)
             return tokens.some((tok) => dentalSet.has(tok))
@@ -207,13 +213,10 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
       }
     }
     load()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [programType])
 
   const programs = useMemo((): Program[] => {
-    // Excluir cualquier item aprendido cuya categoría haya sido remapeada o cuyo source indique que proviene de conversaciones.
     const official = items.filter((it: any) => it.source !== "learned")
     return official.map((it: any) => {
       const type = inferTypeFromTitle(it.question)
@@ -238,14 +241,10 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
 
   const getTypeColor = (type: Program["type"]) => {
     switch (type) {
-      case "doctorado":
-        return "bg-purple-100 text-purple-800 border-purple-200"
-      case "maestria":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      case "especializacion":
-        return "bg-green-100 text-green-800 border-green-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+      case "doctorado": return "bg-purple-100 text-purple-800 border-purple-200"
+      case "maestria": return "bg-blue-100 text-blue-800 border-blue-200"
+      case "especializacion": return "bg-green-100 text-green-800 border-green-200"
+      default: return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
@@ -312,7 +311,6 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
             {/* Expanded Content */}
             {expandedProgram === program.id && (
               <div className="border-t border-gray-100 p-4 bg-gray-50 animate-in slide-in-from-top-2 duration-300">
-                {/* Program Image */}
                 {program.image && (
                   <div className="mb-4">
                     <img
@@ -323,17 +321,18 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
                   </div>
                 )}
 
-                {/* Program Details (Resumen enriquecido) */}
+                {/* Program Details (Formato Original Restaurado) */}
                 <div className="space-y-3">
                   <div>
                     <h4 className="font-semibold text-gray-800 text-sm mb-1">Resumen</h4>
                     {(() => {
-                      const { about, duration, email, phone } = extractSummaryParts(program.description || "")
+                      const { about, label, duration, email, phone } = extractSummaryParts(program.description || "")
                       const hasContact = email || phone
                       return (
                         <ul className="text-sm text-gray-700 space-y-1 list-disc pl-4">
                           <li>
-                            <span className="font-medium text-gray-800">De qué va: </span>
+                            {/* Etiqueta dinámica: Objetivo o Descripción */}
+                            <span className="font-medium text-gray-800">{label}: </span>
                             <span className="text-gray-700">{about}</span>
                           </li>
                           {duration && (
@@ -395,7 +394,7 @@ export default function ProgramButtons({ programType, onProgramSelectTitle }: Pr
               </div>
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 flex-shrink-0" />
-                <span>+58 241 871 0903</span>
+                <span>+58 241-8710903</span>
               </div>
             </div>
           </div>

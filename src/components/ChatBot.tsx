@@ -93,6 +93,7 @@ interface Message {
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
   feedback?: "positive" | "negative"
   confidence?: number
+  isPaused?: boolean
 }
 
 // Program interface no longer needed here; ProgramButtons reports selection by title only.
@@ -112,13 +113,14 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   const [conversationId, setConversationId] = useState<string>("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const streamingResolverRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const initialMessage: Message = {
       id: "welcome",
       role: "assistant",
       // Ask for the user's name first; buttons will be shown after we receive the name
-      content: "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Mucho gusto, ¿me podrías indicar tu nombre?",
+      content: "¡Hola! Soy UJAPITO, tu asistente virtual de la Dirección de Postgrado UJAP. Mucho gusto, ¿Cúal es tu nombre?",
     }
     setMessages([initialMessage])
 
@@ -440,6 +442,12 @@ Genera un único mensaje breve y cálido que:
     return tokens.some((t) => text.includes(t))
   }
 
+  const handleContinueGeneration = () => {
+    if (streamingResolverRef.current) {
+      streamingResolverRef.current()
+    }
+  }
+
   const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
     try {
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)))
@@ -600,8 +608,20 @@ Pregunta original: "${messageText}"`
         const fullText = safeContent
         const chunkSize = 4 // number of characters appended per frame
         const delay = 20 // ms between frames (adjust for speed)
+        const PAUSE_THRESHOLD = 1500
+        let nextPauseAt = PAUSE_THRESHOLD
 
         for (let i = chunkSize; i < fullText.length; i += chunkSize) {
+          if (i > nextPauseAt) {
+            setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isPaused: true } : m)))
+            await new Promise<void>((resolve) => {
+              streamingResolverRef.current = resolve
+            })
+            streamingResolverRef.current = null
+            setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isPaused: false } : m)))
+            nextPauseAt += PAUSE_THRESHOLD
+          }
+
           const partial = fullText.slice(0, i)
           setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: partial } : m)))
           // eslint-disable-next-line no-await-in-loop
@@ -727,6 +747,18 @@ Pregunta original: "${messageText}"`
                     <div className="prose prose-sm md:prose-base max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-strong:font-semibold prose-headings:mt-3 prose-headings:mb-2 prose-h4:text-[1rem] prose-h5:text-[0.95rem]">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                     </div>
+                    {message.isPaused && (
+                      <div className="mt-2 flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleContinueGeneration}
+                          className="text-amber-600 border-amber-200 hover:bg-amber-50 animate-pulse"
+                        >
+                          Continuar generando...
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {message.role === "assistant" && !message.error && !message.showButtons && !message.streaming && (

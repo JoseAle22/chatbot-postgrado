@@ -40,7 +40,7 @@ export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
         {/* Contenedor de botones (cerrar + iniciar sesión) en la esquina superior derecha */}
         <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => window.open("/login", "_blank")}
             className="bg-amber-600 hover:bg-amber-700 text-white rounded-full px-3 py-1 text-sm shadow-md border-none"
           >
             Iniciar sesión
