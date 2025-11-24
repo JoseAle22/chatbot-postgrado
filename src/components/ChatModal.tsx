@@ -1,7 +1,6 @@
 "use client"
 
 import ChatBot from "./ChatBot"
-import { useNavigate } from "react-router-dom"
 
 const X = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,7 +16,6 @@ interface ChatModalProps {
 export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
   if (!isOpen) return null
 
-  const navigate = useNavigate()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
