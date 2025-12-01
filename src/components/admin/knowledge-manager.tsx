@@ -408,8 +408,9 @@ export function KnowledgeManager() {
       {/* Knowledge Items */}
       <div className="grid gap-4">
         {loading ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Cargando...</p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="h-12 w-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4"></div>
+            <p className="text-amber-600 font-medium">Cargando base de conocimiento...</p>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-8">

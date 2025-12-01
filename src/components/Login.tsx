@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { account } from "@/lib/appwrite";
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -58,6 +58,15 @@ function Login({ onLogin }: { onLogin: () => void }) {
       {/* Luces decorativas */}
       <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-amber-400/20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-orange-400/20 rounded-full blur-3xl animate-pulse" />
+
+      {/* Botón Regresar */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md rounded-full shadow-md text-gray-700 hover:bg-white hover:text-amber-600 transition-all hover:scale-105"
+      >
+        <ArrowLeft size={18} />
+        <span className="font-medium text-sm">Volver al inicio</span>
+      </button>
 
       {/* FORMULARIO */}
       <form

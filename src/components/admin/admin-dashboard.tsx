@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { account, databases, DATABASE_ID, COLLECTIONS } from "@/lib/appwrite"
+import { account, databases, DATABASE_ID, COLLECTIONS, Query } from "@/lib/appwrite"
 
 // Appwrite config for keepalive logout
 const APPWRITE_ENDPOINT = (import.meta.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string) || "https://cloud.appwrite.io/v1"
@@ -11,7 +11,7 @@ import { MessageSquare, Database, BarChart3, Clock } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
 import { KnowledgeManager } from "./knowledge-manager"
 import LearningInsights from "./learning-insights"
-import FeedbackAnalytics from "./feedback-analytics"
+import { FeedbackAnalytics } from "./feedback-analytics"
 
 interface DashboardStats {
   totalConversations: number
@@ -23,6 +23,7 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [feedbackList, setFeedbackList] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("knowledge");
   const [loading, setLoading] = useState(true);
   const handleLogout = async () => {
@@ -36,25 +37,38 @@ export default function AdminDashboard() {
       try {
         setLoading(true);
         const conversations = await databases.listDocuments(DATABASE_ID, COLLECTIONS.CONVERSATIONS);
-        const messages = await databases.listDocuments(DATABASE_ID, COLLECTIONS.MESSAGES);
+        const messages = await databases.listDocuments(DATABASE_ID, COLLECTIONS.MESSAGES, [
+          Query.limit(100),
+          Query.orderDesc("$createdAt"),
+        ]);
         const feedback = await databases.listDocuments(DATABASE_ID, COLLECTIONS.FEEDBACK);
         const knowledge = await databases.listDocuments(DATABASE_ID, COLLECTIONS.KNOWLEDGE_BASE);
         const patterns = await databases.listDocuments(DATABASE_ID, COLLECTIONS.LEARNING_PATTERNS);
 
         // Calcular métricas
         const totalConversations = conversations.total;
-        const avgResponseTime = messages.total > 0 ? (
-          messages.documents.reduce((acc, msg) => acc + (msg.response_time || 0), 0) / messages.total
+        
+        const assistantMessages = messages.documents.filter(msg => msg.role === 'assistant' && (msg.response_time || 0) > 0);
+        const avgResponseTime = assistantMessages.length > 0 ? (
+          assistantMessages.reduce((acc, msg) => acc + (msg.response_time || 0), 0) / assistantMessages.length
         ) : 0;
+
         const satisfactionRate = feedback.total > 0 ? (
           feedback.documents.reduce((acc, fb) => acc + (fb.rating || 0), 0) / feedback.total
         ) : 0;
         const knowledgeBaseSize = knowledge.total;
         const learningPatterns = patterns.total;
 
+        setFeedbackList(feedback.documents.map(doc => ({
+          rating: doc.rating || 0,
+          comment: doc.comment || "",
+          timestamp: doc.$createdAt,
+          userId: doc.user_id
+        })));
+
         setStats({
           totalConversations,
-          avgResponseTime: Number(avgResponseTime.toFixed(2)),
+          avgResponseTime: Number((avgResponseTime / 1000).toFixed(2)),
           satisfactionRate: Number(satisfactionRate.toFixed(2)),
           knowledgeBaseSize,
           learningPatterns,
@@ -144,7 +158,12 @@ export default function AdminDashboard() {
           {activeTab === "knowledge" && <KnowledgeManager />}
           {activeTab === "analytics" && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
-              {loading || !stats ? (
+              {loading ? (
+                <div className="col-span-3 flex flex-col items-center justify-center py-12">
+                  <div className="h-12 w-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4"></div>
+                  <p className="text-amber-600 font-medium">Cargando analíticas...</p>
+                </div>
+              ) : !stats ? (
                 <div className="col-span-3 text-center py-8 text-amber-600 font-bold">No se pudieron cargar las analíticas.</div>
               ) : (
                 <>
@@ -220,7 +239,7 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
-          {activeTab === "feedback" && <FeedbackAnalytics />}
+          {activeTab === "feedback" && <FeedbackAnalytics feedbackData={feedbackList} />}
           {activeTab === "patterns" && <LearningInsights />}
         </div>
       </div>

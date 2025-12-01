@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import ProgramButtons from "./ProgramButtons"
+import { StarRating } from "./star-rating"
 import { LearningSystem } from "@/lib/learning-system"
 import { AIService } from "@/lib/ai-service"
 
@@ -92,6 +93,7 @@ interface Message {
   streaming?: boolean
   showButtons?: "initial" | "program-type" | "programs-clinicos" | "programs-no-clinicos"
   feedback?: "positive" | "negative"
+  rating?: number
   confidence?: number
   isPaused?: boolean
 }
@@ -206,6 +208,7 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
   }
 
   const callGeminiAPI = async (userMessage: string, conversationHistory: Message[]) => {
+    const startTime = Date.now();
     try {
       // Use the enhanced AI service
       const response = await AIService.generateResponse(userMessage, conversationHistory)
@@ -331,8 +334,9 @@ export default function ChatBot({ isModal = false }: ChatBotProps) {
       const safeGeminiResponse = geminiResponse.slice(0, 9900)
       // Save fallback response to learning system
       if (conversationId) {
+        const responseTime = Date.now() - startTime;
         await LearningSystem.saveMessage(conversationId, "user", userMessage.slice(0, 9900))
-        await LearningSystem.saveMessage(conversationId, "assistant", safeGeminiResponse)
+        await LearningSystem.saveMessage(conversationId, "assistant", safeGeminiResponse, undefined, undefined, responseTime)
       }
       return safeGeminiResponse
     }
@@ -448,16 +452,16 @@ Genera un único mensaje breve y cálido que:
     }
   }
 
-  const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
+  const handleFeedback = async (messageId: string, rating: number) => {
     try {
-      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, feedback } : msg)))
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg)))
 
       if (conversationId) {
         await LearningSystem.saveFeedback(
           conversationId,
-          feedback,
-          feedback === "positive" ? 5 : 1,
-          feedback === "positive" ? "Usuario encontró la respuesta útil" : "Usuario no encontró la respuesta útil",
+          "star_rating",
+          rating,
+          rating >= 4 ? "Usuario satisfecho" : "Usuario insatisfecho",
           messageId,
         )
       }
@@ -514,7 +518,7 @@ Genera un único mensaje breve y cálido que:
           ),
         )
         setApiStatus("working")
-        setChatState("conversation")
+        setChatState("program-selection")
       } catch (error) {
         console.error("Error generando saludo personalizado:", error)
         const errText = `¡Mucho gusto, ${name}! **Estoy aquí para ayudarte** con tus consultas sobre Postgrado UJAP. ¿Qué te gustaría saber?`
@@ -526,7 +530,7 @@ Genera un único mensaje breve y cálido que:
           ),
         )
         setApiStatus("error")
-        setChatState("conversation")
+        setChatState("program-selection")
       } finally {
         setIsLoading(false)
       }
@@ -535,15 +539,7 @@ Genera un único mensaje breve y cálido que:
 
     // Create an assistant placeholder that will be typed out while we wait
     const assistantId = (Date.now() + 1).toString()
-    const assistantPlaceholder: Message = {
-      id: assistantId,
-      role: "assistant",
-      content: "",
-      streaming: true,
-      confidence: 0,
-    }
-    // Add placeholder immediately so the UI shows the assistant bubble (even empty) instead of a separate "Escribiendo..." bubble
-    setMessages((prev) => [...prev, assistantPlaceholder])
+    
     setIsLoading(true)
 
     try {
@@ -580,6 +576,7 @@ Requisitos de formato (usa Markdown):
 - Listas con guiones (-) o números cuando corresponda
 - Resalta conceptos clave con **negrita**, no abuses
 - Mantén el foco en la pregunta actual, sin mezclar otros temas
+- **IMPORTANTE**: Si hay correos electrónicos, formatéalos explícitamente como enlaces 'mailto' (ej: [ejemplo@ujap.edu.ve](mailto:ejemplo@ujap.edu.ve)) para que sean clicables.
 
 Estructura sugerida cuando aplique (adáptala al contenido disponible):
 1) Descripción breve
@@ -587,7 +584,7 @@ Estructura sugerida cuando aplique (adáptala al contenido disponible):
 3) Duración y modalidad (si existen)
 4) Costos/aranceles (si existen)
 5) Documentos/inscripción (si existen)
-6) Contacto (si existen correos o teléfonos)
+6) Contacto (si existen correos o teléfonos, recuerda el formato mailto)
 
 No inventes datos que no estén en la información.
 
@@ -605,6 +602,15 @@ Pregunta original: "${messageText}"`
 
       // Type out the assistant response into the existing placeholder to give a streaming/typing illusion
       try {
+        const assistantPlaceholder: Message = {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          streaming: true,
+          confidence: 0,
+        }
+        setMessages((prev) => [...prev, assistantPlaceholder])
+
         const fullText = safeContent
         const chunkSize = 4 // number of characters appended per frame
         const delay = 20 // ms between frames (adjust for speed)
@@ -648,9 +654,19 @@ Pregunta original: "${messageText}"`
       setApiStatus("error")
       // Replace the placeholder assistant message with an error message (if it exists) or append a new one
       const errText = "Lo siento, ha ocurrido un error inesperado al procesar tu solicitud."
-      setMessages((prev) =>
-        prev.map((m) => (m.role === "assistant" && m.streaming ? { ...m, content: errText, error: true, streaming: false } : m)),
-      )
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === assistantId)
+        if (exists) {
+          return prev.map((m) =>
+            m.id === assistantId ? { ...m, content: errText, error: true, streaming: false } : m,
+          )
+        } else {
+          return [
+            ...prev,
+            { id: assistantId, role: "assistant", content: errText, error: true, streaming: false },
+          ]
+        }
+      })
     } finally {
       setIsLoading(false)
     }
@@ -762,31 +778,16 @@ Pregunta original: "${messageText}"`
                   </div>
 
                   {message.role === "assistant" && !message.error && !message.showButtons && !message.streaming && (
-                    <div className="flex gap-2 justify-start">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleFeedback(message.id, "positive")}
-                        className={`h-8 px-3 text-xs ${
-                          message.feedback === "positive"
-                            ? "bg-green-100 text-green-700 hover:bg-green-200"
-                            : "hover:bg-gray-100"
-                        }`}
-                      >
-                        👍 Útil
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleFeedback(message.id, "negative")}
-                        className={`h-8 px-3 text-xs ${
-                          message.feedback === "negative"
-                            ? "bg-red-100 text-red-700 hover:bg-red-200"
-                            : "hover:bg-gray-100"
-                        }`}
-                      >
-                        👎 No útil
-                      </Button>
+                    <div className="flex gap-2 justify-start items-center mt-2">
+                      <span className="text-xs text-gray-500 mr-2">
+                        {message.rating ? "Gracias por tu calificación:" : "Calificar respuesta:"}
+                      </span>
+                      <StarRating
+                        size={16}
+                        defaultValue={message.rating || 0}
+                        onRate={(rating) => handleFeedback(message.id, rating)}
+                        readOnly={!!message.rating}
+                      />
                     </div>
                   )}
 

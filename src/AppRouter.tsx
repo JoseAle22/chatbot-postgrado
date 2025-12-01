@@ -31,8 +31,9 @@ export default function AppRouter() {
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Cargando...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="h-12 w-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-amber-600 font-medium">Iniciando aplicación...</p>
       </div>
     );
   }

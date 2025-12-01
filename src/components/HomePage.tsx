@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Mail, Phone, PhoneCall, Facebook, Twitter, Instagram } from "lucide-react"
+import { Mail, Phone, PhoneCall, Facebook, Twitter, Instagram, Smartphone } from "lucide-react"
 import FloatingChatButton from "./FloatingChatButton"
 
 export default function HomePage() {
@@ -358,6 +358,40 @@ export default function HomePage() {
                   </div>
                 </div>
               </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Download Section */}
+      <section className="py-16 bg-gradient-to-r from-amber-600 to-orange-600 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10"></div>
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="text-center md:text-left max-w-2xl">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">¡Lleva la UJAP contigo!</h2>
+              <p className="text-lg md:text-xl mb-8 text-amber-50">
+                Descarga nuestra aplicación móvil oficial y accede a todos los servicios universitarios desde la palma de tu mano. 
+                Consulta horarios, notas, realiza pagos y mantente informado.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                <Button 
+                  size="lg" 
+                  className="bg-white text-amber-600 hover:bg-gray-100 font-bold gap-3 h-14 px-8"
+                  onClick={() => window.open('https://fra.cloud.appwrite.io/v1/storage/buckets/apk/files/692d99f800187084e8b9/download?project=68da0bce0032e08cea40&mode=admin', '_blank')}
+                >
+                  <Smartphone className="h-6 w-6" />
+                  <div className="text-left">
+                    <div className="text-xs font-normal">Disponible en</div>
+                    <div className="text-lg leading-none">Google Play</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:block relative">
+              <div className="w-64 h-64 bg-white/10 rounded-full absolute -top-10 -right-10 blur-3xl"></div>
+              <div className="w-64 h-64 bg-amber-500/20 rounded-full absolute -bottom-10 -left-10 blur-3xl"></div>
+              <Smartphone className="w-48 h-48 text-white/90 drop-shadow-2xl transform rotate-12" strokeWidth={1} />
             </div>
           </div>
         </div>
